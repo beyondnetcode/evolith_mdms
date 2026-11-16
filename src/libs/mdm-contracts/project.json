@@ -1,0 +1,21 @@
+{
+  "name": "mdm-contracts",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "libs/mdm-contracts/src",
+  "tags": ["scope:mdm", "type:contracts"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": { "command": "tsc -p libs/mdm-contracts/tsconfig.json", "cwd": "{workspaceRoot}" }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "eslint libs/mdm-contracts", "cwd": "{workspaceRoot}" }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "vitest run libs/mdm-contracts", "cwd": "{workspaceRoot}" }
+    }
+  }
+}

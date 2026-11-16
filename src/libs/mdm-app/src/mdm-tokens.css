@@ -1,0 +1,9 @@
+/*
+ * Tokens de componente locales de `mdm-app` (UI-MDM-001 §1, SUPUESTO SU-UI-MDM-01, G-583): anchos de panel de la
+ * lista-detalle de M3 derivados de la escala, no colores ni medidas arbitrarias. Se consumen como
+ * `w-(--mdm-establishment-list-width)`.
+ */
+:root {
+  /* 360 dp: lista de establecimientos en la ficha (UI-MDM-001 §3.3). */
+  --mdm-establishment-list-width: 22.5rem;
+}

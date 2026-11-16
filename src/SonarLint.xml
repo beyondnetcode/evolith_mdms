@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Parámetros de los umbrales de ADR-0056 D4 (R4) para SonarAnalyzer.CSharp. -->
+<AnalysisInput>
+  <Settings />
+  <Rules>
+    <Rule>
+      <Key>S138</Key>
+      <Parameters>
+        <Parameter><Key>max</Key><Value>50</Value></Parameter>
+      </Parameters>
+    </Rule>
+    <Rule>
+      <Key>S107</Key>
+      <Parameters>
+        <Parameter><Key>max</Key><Value>3</Value></Parameter>
+      </Parameters>
+    </Rule>
+    <Rule>
+      <Key>S1541</Key>
+      <Parameters>
+        <Parameter><Key>maximum</Key><Value>10</Value></Parameter>
+      </Parameters>
+    </Rule>
+    <Rule>
+      <Key>S134</Key>
+      <Parameters>
+        <Parameter><Key>max</Key><Value>3</Value></Parameter>
+      </Parameters>
+    </Rule>
+  </Rules>
+  <Files />
+</AnalysisInput>

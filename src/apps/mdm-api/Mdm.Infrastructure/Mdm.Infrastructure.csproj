@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Mdm.Application/Mdm.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Mdm.Infrastructure.Test" />
+    <InternalsVisibleTo Include="Mdm.Infrastructure.IntegrationTest" />
+    <InternalsVisibleTo Include="Mdm.Presentation.IntegrationTest" />
+  </ItemGroup>
+
+</Project>

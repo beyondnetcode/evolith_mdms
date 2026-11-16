@@ -1,0 +1,27 @@
+{
+  "md": {
+    "ref": {
+      "elevation": {
+        "$description": "Sombras de M3, niveles 0 a 5 (ADR-0110 §2.1).",
+        "level-0": {
+          "$value": "none"
+        },
+        "level-1": {
+          "$value": "0 1px 2px rgb(0 0 0 / 0.3), 0 1px 3px 1px rgb(0 0 0 / 0.15)"
+        },
+        "level-2": {
+          "$value": "0 1px 2px rgb(0 0 0 / 0.3), 0 2px 6px 2px rgb(0 0 0 / 0.15)"
+        },
+        "level-3": {
+          "$value": "0 1px 3px rgb(0 0 0 / 0.3), 0 4px 8px 3px rgb(0 0 0 / 0.15)"
+        },
+        "level-4": {
+          "$value": "0 2px 3px rgb(0 0 0 / 0.3), 0 6px 10px 4px rgb(0 0 0 / 0.15)"
+        },
+        "level-5": {
+          "$value": "0 4px 4px rgb(0 0 0 / 0.3), 0 8px 12px 6px rgb(0 0 0 / 0.15)"
+        }
+      }
+    }
+  }
+}

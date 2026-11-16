@@ -1,0 +1,1899 @@
+openapi: 3.1.0
+info:
+  title: MDM — maestro de partes (Party)
+  version: 0.2.0
+  summary: Contrato API-MDM-002 de mdm-api para Party, identificadores, roles, establecimientos, relaciones, referencias externas y catálogos.
+  description: |
+    Documento máquina del contrato `API-MDM-002` (Borrador, sin implementación).
+    La prosa y el porqué de cada regla están en `contrato-api-party-mdm-002.es.md`;
+    el dominio en `DOM-MDM-002`. Es la fuente del mock `mdm-mock` del frontend (D-044).
+
+    Concurrencia: toda escritura sobre un recurso existente exige `If-Match` con la
+    versión del agregado dueño. Identificadores, roles y establecimientos comparten la
+    versión de su Party; relaciones, referencias externas y tipos de rol tienen versión propia.
+
+    El catálogo de tipos de rol se administra desde MDM (D-046): alta, edición,
+    desactivación y reactivación (C-05 a C-08). El resto de catálogos es de solo lectura.
+  contact:
+    name: Organización S.A.
+  license:
+    name: Propietaria — © Organización S.A.
+    identifier: LicenseRef-Organización-Proprietary
+servers:
+  - url: /api/v1
+    description: Prefijo común de mdm-api
+security:
+  - umsBearer: []
+tags:
+  - name: Parties
+    description: Agregado Party (organizaciones)
+  - name: Identifiers
+    description: Identificadores de la Party (versión de la Party)
+  - name: Roles
+    description: Roles con vigencia (versión de la Party)
+  - name: Establishments
+    description: Establecimientos (versión de la Party)
+  - name: PartyRelationships
+    description: Agregado PartyRelationship (versión propia)
+  - name: ExternalReferences
+    description: Agregado ExternalReference (versión propia)
+  - name: Catalogs
+    description: Catálogos; solo los tipos de rol son administrables (D-046), con versión propia por tipo
+
+paths:
+  /parties:
+    get:
+      tags: [Parties]
+      operationId: listParties
+      summary: P-01 Lista y búsqueda de Parties
+      parameters:
+        - name: search
+          in: query
+          description: Texto contenido en code, legalName o tradeName.
+          schema: { type: string, maxLength: 200 }
+        - name: roleTypeCode
+          in: query
+          description: Parties con un rol vigente de ese tipo.
+          schema: { $ref: '#/components/schemas/CatalogCode' }
+        - name: status
+          in: query
+          description: Ausente, todos menos Archived y Merged.
+          schema: { $ref: '#/components/schemas/PartyStatus' }
+        - name: type
+          in: query
+          schema: { $ref: '#/components/schemas/PartyType' }
+        - name: countryCode
+          in: query
+          description: Búsqueda exacta por identificador; obligatorio junto con schemeCode e identifierValue.
+          schema: { $ref: '#/components/schemas/CountryCode' }
+        - name: schemeCode
+          in: query
+          schema: { $ref: '#/components/schemas/CatalogCode' }
+        - name: identifierValue
+          in: query
+          description: Se normaliza como en el alta. No se registra en logs (ADR-0193).
+          schema: { type: string, maxLength: 50 }
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [code, legalName, createdAt, updatedAt]
+            default: code
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Página de Parties.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PartyPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Parties]
+      operationId: registerParty
+      summary: P-02 Alta de una organización
+      description: Crea el agregado; no exige If-Match. Evento PartyRegistered (+ PartyRoleAssigned por rol inicial).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterPartyRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+    get:
+      tags: [Parties]
+      operationId: getParty
+      summary: P-03 Ficha completa de una Party
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Party con identificadores, roles y establecimientos.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Party' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    put:
+      tags: [Parties]
+      operationId: renameParty
+      summary: P-04 Cambia legalName y tradeName
+      description: If-Match con la versión de la Party. Evento PartyRenamed.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RenamePartyRequest' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Parties]
+      operationId: archiveParty
+      summary: P-07 Archiva la Party (terminal, borrado lógico)
+      description: If-Match con la versión de la Party. Evento PartyArchived.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalReason'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}/suspend:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+    post:
+      tags: [Parties]
+      operationId: suspendParty
+      summary: P-05 Suspende la Party
+      description: If-Match con la versión de la Party. Evento PartySuspended.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalReason'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}/activate:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+    post:
+      tags: [Parties]
+      operationId: activateParty
+      summary: P-06 Reactiva una Party suspendida
+      description: If-Match con la versión de la Party. Evento PartyActivated.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalReason'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}/identifiers:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+    get:
+      tags: [Identifiers]
+      operationId: listPartyIdentifiers
+      summary: P-08 Identificadores de la Party
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Identificadores vigentes y vencidos.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/PartyIdentifier' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Identifiers]
+      operationId: addPartyIdentifier
+      summary: P-09 Añade un identificador
+      description: If-Match con la versión de la Party. Evento PartyIdentifierAdded (+ PartyIdentifierExpired si replacesPrimary).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddIdentifierRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}/identifiers/{identifierId}/expire:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+      - $ref: '#/components/parameters/IdentifierId'
+    post:
+      tags: [Identifiers]
+      operationId: expirePartyIdentifier
+      summary: P-10 Vence un identificador
+      description: If-Match con la versión de la Party. Evento PartyIdentifierExpired.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalEndValidity'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}/roles:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+    get:
+      tags: [Roles]
+      operationId: listPartyRoles
+      summary: P-11 Roles de la Party
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Roles en cualquier estado.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/PartyRole' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Roles]
+      operationId: assignPartyRole
+      summary: P-12 Asigna un rol con vigencia
+      description: If-Match con la versión de la Party; exige la Party Active. Evento PartyRoleAssigned.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignRoleRequest' }
+            example: { roleTypeCode: CUSTOMER, validFrom: '2026-11-01', validTo: null }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}/roles/{roleId}/suspend:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+      - $ref: '#/components/parameters/RoleId'
+    post:
+      tags: [Roles]
+      operationId: suspendPartyRole
+      summary: P-13 Suspende un rol
+      description: If-Match con la versión de la Party. Evento PartyRoleSuspended.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalReason'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}/roles/{roleId}/activate:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+      - $ref: '#/components/parameters/RoleId'
+    post:
+      tags: [Roles]
+      operationId: activatePartyRole
+      summary: P-14 Reactiva un rol suspendido (propuesta, G-570)
+      description: If-Match con la versión de la Party; exige la Party Active. Evento PartyRoleReactivated (propuesta).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalReason'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}/roles/{roleId}/terminate:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+      - $ref: '#/components/parameters/RoleId'
+    post:
+      tags: [Roles]
+      operationId: terminatePartyRole
+      summary: P-15 Termina un rol (terminal)
+      description: If-Match con la versión de la Party. Evento PartyRoleTerminated.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalEndValidity'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}/establishments:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+    get:
+      tags: [Establishments]
+      operationId: listEstablishments
+      summary: P-16 Establecimientos de la Party
+      parameters:
+        - name: status
+          in: query
+          description: Ausente, todos (incluidos los cerrados). active e inactive excluyen los cerrados.
+          schema:
+            type: string
+            enum: [active, inactive, closed]
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Establecimientos ordenados por code y luego id.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Establishment' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Establishments]
+      operationId: openEstablishment
+      summary: P-18 Abre un establecimiento
+      description: If-Match con la versión de la Party; exige la Party Active. Evento EstablishmentOpened.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpenEstablishmentRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}/establishments/{establishmentId}:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+      - $ref: '#/components/parameters/EstablishmentId'
+    get:
+      tags: [Establishments]
+      operationId: getEstablishment
+      summary: P-17 Un establecimiento
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Establecimiento; el ETag es la versión de su Party.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Establishment' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    put:
+      tags: [Establishments]
+      operationId: changeEstablishment
+      summary: P-19 Edita un establecimiento
+      description: If-Match con la versión de la Party. Evento EstablishmentChanged.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangeEstablishmentRequest' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Establishments]
+      operationId: closeEstablishment
+      summary: P-22 Cierra un establecimiento (terminal)
+      description: If-Match con la versión de la Party. Evento EstablishmentClosed.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalReason'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}/establishments/{establishmentId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+      - $ref: '#/components/parameters/EstablishmentId'
+    post:
+      tags: [Establishments]
+      operationId: deactivateEstablishment
+      summary: P-20 Desactiva un establecimiento (reversible)
+      description: If-Match con la versión de la Party. Evento EstablishmentDeactivated.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalReason'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /parties/{partyId}/establishments/{establishmentId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/PartyId'
+      - $ref: '#/components/parameters/EstablishmentId'
+    post:
+      tags: [Establishments]
+      operationId: reactivateEstablishment
+      summary: P-21 Reactiva un establecimiento
+      description: If-Match con la versión de la Party; exige la Party Active. Evento EstablishmentReactivated.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalReason'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /party-relationships:
+    get:
+      tags: [PartyRelationships]
+      operationId: listPartyRelationships
+      summary: R-01 Lista de relaciones
+      parameters:
+        - name: partyId
+          in: query
+          description: Relaciones en las que la Party aparece en cualquier extremo.
+          schema: { type: string, format: uuid }
+        - name: fromPartyId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: toPartyId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: kindCode
+          in: query
+          schema: { $ref: '#/components/schemas/CatalogCode' }
+        - name: currentOnly
+          in: query
+          description: Solo relaciones vigentes hoy.
+          schema: { type: boolean, default: false }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Página de relaciones.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PartyRelationshipPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [PartyRelationships]
+      operationId: startPartyRelationship
+      summary: R-02 Inicia una relación entre dos Parties
+      description: Crea el agregado; no exige If-Match ni sube la versión de ninguna Party. Evento PartyRelationshipStarted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StartRelationshipRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /party-relationships/{relationshipId}:
+    parameters:
+      - $ref: '#/components/parameters/RelationshipId'
+    get:
+      tags: [PartyRelationships]
+      operationId: getPartyRelationship
+      summary: R-03 Una relación
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Relación; el ETag es su versión propia.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PartyRelationship' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /party-relationships/{relationshipId}/end:
+    parameters:
+      - $ref: '#/components/parameters/RelationshipId'
+    post:
+      tags: [PartyRelationships]
+      operationId: endPartyRelationship
+      summary: R-04 Termina una relación
+      description: If-Match con la versión de la relación. Evento PartyRelationshipEnded.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalEndValidity'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /external-references:
+    get:
+      tags: [ExternalReferences]
+      operationId: listExternalReferences
+      summary: X-01 Lista de referencias externas
+      parameters:
+        - name: mdmObjectType
+          in: query
+          description: Obligatorio junto con mdmObjectId si se informa.
+          schema: { $ref: '#/components/schemas/MdmObjectType' }
+        - name: mdmObjectId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: partyId
+          in: query
+          description: Referencias de la Party y de sus establecimientos.
+          schema: { type: string, format: uuid }
+        - name: systemCode
+          in: query
+          schema: { type: string, maxLength: 50 }
+        - name: systemInstance
+          in: query
+          schema: { type: string, maxLength: 50 }
+        - name: externalObjectType
+          in: query
+          schema: { type: string, maxLength: 50 }
+        - name: externalKey
+          in: query
+          description: No se registra en logs.
+          schema: { type: string, maxLength: 100 }
+        - name: syncStatus
+          in: query
+          schema: { $ref: '#/components/schemas/SyncStatus' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Página de referencias externas.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExternalReferencePage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [ExternalReferences]
+      operationId: linkExternalReference
+      summary: X-02 Vincula un objeto de MDM con su clave externa
+      description: Crea el agregado; no exige If-Match. Evento ExternalReferenceLinked (propuesta, G-574).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LinkExternalReferenceRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /external-references/{externalReferenceId}:
+    parameters:
+      - $ref: '#/components/parameters/ExternalReferenceId'
+    get:
+      tags: [ExternalReferences]
+      operationId: getExternalReference
+      summary: X-03 Una referencia externa
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Referencia; el ETag es su versión propia.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExternalReference' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [ExternalReferences]
+      operationId: unlinkExternalReference
+      summary: X-04 Desvincula (syncStatus Unlinked, terminal)
+      description: If-Match con la versión de la referencia. Evento ExternalReferenceUnlinked (propuesta, G-574).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalReason'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /catalogs/identifier-schemes:
+    get:
+      tags: [Catalogs]
+      operationId: listIdentifierSchemes
+      summary: C-01 Esquemas de identificador
+      parameters:
+        - name: countryCode
+          in: query
+          schema: { $ref: '#/components/schemas/CountryCode' }
+        - name: partyType
+          in: query
+          schema: { $ref: '#/components/schemas/PartyType' }
+        - $ref: '#/components/parameters/IncludeInactive'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Catálogo completo, sin paginar.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/IdentifierScheme' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /catalogs/party-role-types:
+    get:
+      tags: [Catalogs]
+      operationId: listPartyRoleTypes
+      summary: C-02 Tipos de rol
+      parameters:
+        - name: partyType
+          in: query
+          schema: { $ref: '#/components/schemas/PartyType' }
+        - $ref: '#/components/parameters/IncludeInactive'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Catálogo completo, sin paginar.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/PartyRoleType' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+    post:
+      tags: [Catalogs]
+      operationId: createPartyRoleType
+      summary: C-05 Alta de un tipo de rol
+      description: |
+        Crea el agregado; no exige If-Match. El código se normaliza (recorte, mayúsculas
+        invariantes, espacios y guiones por `_`), es inmutable y no se reutiliza, ni el de un
+        tipo desactivado (`409` `party_role_type.code_duplicate`). Nace activo y con versión 1.
+        Autorización supuesta: analista y responsable de datos maestros (G-555, G-560).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePartyRoleTypeRequest' }
+      responses:
+        '201':
+          description: Tipo creado. Cuerpo con su código normalizado y su versión.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleTypeCreatedResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /catalogs/party-role-types/{code}:
+    parameters:
+      - $ref: '#/components/parameters/RoleTypeCode'
+    put:
+      tags: [Catalogs]
+      operationId: changePartyRoleType
+      summary: C-06 Cambia un tipo de rol
+      description: |
+        Cambia nombre, descripción, código UN/EDIFACT 3035, tipos de parte admitidos y
+        `requiresFiscalIdentifier`; el código no cambia. Se admite también sobre un tipo
+        desactivado. If-Match con la versión del tipo; no sube la versión de ninguna Party.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PartyRoleTypeInput' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /catalogs/party-role-types/{code}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/RoleTypeCode'
+    post:
+      tags: [Catalogs]
+      operationId: deactivatePartyRoleType
+      summary: C-07 Desactiva un tipo de rol
+      description: |
+        Reversible. Un tipo desactivado no se asigna a roles nuevos (`409`
+        `party_role_type.inactive` en P-02 y P-12); los roles existentes se conservan con su
+        estado y su vigencia. If-Match con la versión del tipo.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalReason'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /catalogs/party-role-types/{code}/activate:
+    parameters:
+      - $ref: '#/components/parameters/RoleTypeCode'
+    post:
+      tags: [Catalogs]
+      operationId: activatePartyRoleType
+      summary: C-08 Reactiva un tipo de rol desactivado
+      description: If-Match con la versión del tipo.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        $ref: '#/components/requestBodies/OptionalReason'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /catalogs/establishment-kinds:
+    get:
+      tags: [Catalogs]
+      operationId: listEstablishmentKinds
+      summary: C-03 Tipos de establecimiento
+      parameters:
+        - $ref: '#/components/parameters/IncludeInactive'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Catálogo completo, sin paginar.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/EstablishmentKind' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /catalogs/relationship-kinds:
+    get:
+      tags: [Catalogs]
+      operationId: listRelationshipKinds
+      summary: C-04 Tipos de relación
+      parameters:
+        - $ref: '#/components/parameters/IncludeInactive'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Catálogo completo, sin paginar.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/RelationshipKind' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+components:
+  securitySchemes:
+    umsBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Portador JWT RS256 emitido por UMS y validado contra su JWKS (ADR-0157). Autorización por permiso pendiente (G-314, G-536).
+
+  headers:
+    ETag:
+      description: Versión entera fuerte del agregado dueño, entre comillas.
+      schema: { type: string, pattern: '^"[1-9][0-9]*"$' }
+      example: '"7"'
+    Location:
+      description: URL del recurso creado.
+      schema: { type: string, format: uri-reference }
+
+  parameters:
+    PartyId:
+      name: partyId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdentifierId:
+      name: identifierId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    RoleId:
+      name: roleId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    EstablishmentId:
+      name: establishmentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    RelationshipId:
+      name: relationshipId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ExternalReferenceId:
+      name: externalReferenceId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    RoleTypeCode:
+      name: code
+      in: path
+      required: true
+      description: Código normalizado del tipo de rol; un código que no existe responde 404.
+      schema: { $ref: '#/components/schemas/CatalogCode' }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: ETag vigente del agregado dueño. Ausente, vacío o * → 428; mal formado → 400; distinto → 412.
+      schema: { type: string, pattern: '^"[1-9][0-9]*"$' }
+      example: '"7"'
+    IfNoneMatch:
+      name: If-None-Match
+      in: header
+      required: false
+      description: Si coincide con el ETag (comparación débil) o es *, responde 304.
+      schema: { type: string }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, format: int32, minimum: 1, default: 1 }
+    PageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, format: int32, minimum: 1, maximum: 100, default: 20 }
+    SortOrder:
+      name: sortOrder
+      in: query
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: asc
+    IncludeInactive:
+      name: includeInactive
+      in: query
+      schema: { type: boolean, default: false }
+
+  requestBodies:
+    OptionalReason:
+      required: false
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ReasonRequest' }
+    OptionalEndValidity:
+      required: false
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/EndValidityRequest' }
+
+  responses:
+    Created:
+      description: Recurso creado. Cuerpo con el id creado y la versión del agregado dueño.
+      headers:
+        Location: { $ref: '#/components/headers/Location' }
+        ETag: { $ref: '#/components/headers/ETag' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/CreatedResponse' }
+    NoContent:
+      description: Escritura correcta; devuelve el ETag nuevo.
+      headers:
+        ETag: { $ref: '#/components/headers/ETag' }
+    NotModified:
+      description: If-None-Match coincide; sin cuerpo.
+      headers:
+        ETag: { $ref: '#/components/headers/ETag' }
+    BadRequest:
+      description: validation.failed (con errors) o request.malformed.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+          example:
+            type: https://httpwg.org/specs/rfc9110.html#status.400
+            title: La petición no es válida
+            status: 400
+            detail: Revisa el campo indicado.
+            instance: /api/v1/parties
+            code: validation.failed
+            errors:
+              legalName: [validation.legal_name_required]
+    Unauthorized:
+      description: auth.unauthenticated o auth.user_required.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Forbidden:
+      description: auth.forbidden; reservado para la autorización por permiso (G-314).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    NotFound:
+      description: common.not_found; el recurso de la ruta no existe.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Conflict:
+      description: Conflicto con el estado o con la unicidad.
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ProblemDetails'
+              - type: object
+                properties:
+                  code: { $ref: '#/components/schemas/ConflictCode' }
+          example:
+            type: https://httpwg.org/specs/rfc9110.html#status.409
+            title: El rol se solapa con otro del mismo tipo
+            status: 409
+            detail: La Party ya tiene un rol CUSTOMER vigente en ese periodo.
+            instance: /api/v1/parties/0b9c7e0e-2f4a-4c39-9a51-1f0d7a3e9c11/roles
+            code: party.role.overlap
+    UnprocessableContent:
+      description: Valor que el catálogo o una regla sin estado no admite.
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ProblemDetails'
+              - type: object
+                properties:
+                  code: { $ref: '#/components/schemas/UnprocessableCode' }
+          example:
+            type: https://httpwg.org/specs/rfc9110.html#status.422
+            title: Tipo de Party no admitido
+            status: 422
+            detail: Las personas naturales no se admiten hasta resolver la Ley 29733.
+            instance: /api/v1/parties
+            code: party.person_not_supported
+    PreconditionFailed:
+      description: precondition.failed; la versión cambió.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    PreconditionRequired:
+      description: precondition.required; falta If-Match.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    UnsupportedMediaType:
+      description: request.unsupported_media_type.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    InternalError:
+      description: server.unexpected_error.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+
+  schemas:
+    Code:
+      type: string
+      description: Se normaliza (recorte, mayúsculas invariantes, espacios por _). Inmutable y no reutilizable.
+      minLength: 1
+      maxLength: 100
+    CatalogCode:
+      type: string
+      minLength: 1
+      maxLength: 50
+      pattern: '^[A-Z0-9_-]+$'
+    CountryCode:
+      type: string
+      description: ISO 3166-1 alfa-2.
+      pattern: '^[A-Z]{2}$'
+      minLength: 2
+      maxLength: 2
+    LegalName:
+      type: string
+      minLength: 1
+      maxLength: 200
+    Reason:
+      type: string
+      maxLength: 500
+    Actor:
+      type: string
+      description: Claim sub del portador.
+      maxLength: 200
+    Version:
+      type: integer
+      format: int64
+      minimum: 1
+      description: Versión del agregado; igual al ETag sin comillas.
+    PartyType:
+      type: string
+      enum: [ORGANIZATION, PERSON]
+    PartyStatus:
+      type: string
+      enum: [Active, Suspended, Archived, Merged]
+    RoleStatus:
+      type: string
+      enum: [Active, Suspended, Terminated]
+    RelationshipStatus:
+      type: string
+      enum: [Active, Ended]
+    SyncStatus:
+      type: string
+      enum: [Linked, PendingSync, SyncFailed, Unlinked]
+    MdmObjectType:
+      type: string
+      enum: [PARTY, ESTABLISHMENT]
+
+    ProblemDetails:
+      type: object
+      description: RFC 9457 con la extensión code.
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer, format: int32 }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+        code:
+          type: string
+          description: Código estable de negocio o transversal.
+          examples: [validation.failed, precondition.required, party.identifier.duplicate]
+        errors:
+          type: object
+          description: Solo en validation.failed; un único campo con la lista de códigos validation.*.
+          additionalProperties:
+            type: array
+            items: { type: string }
+    ConflictCode:
+      type: string
+      enum:
+        - party.code_not_unique
+        - party.archived
+        - party.merged
+        - party.already_active
+        - party.already_suspended
+        - party.not_active
+        - party.identifier.duplicate
+        - party.identifier.primary_exists
+        - party.identifier.primary_required
+        - party.identifier.fiscal_required
+        - party.identifier.already_expired
+        - party.role.fiscal_identifier_required
+        - party.role.overlap
+        - party.role.already_active
+        - party.role.already_suspended
+        - party.role.terminated
+        - establishment.code_not_unique
+        - establishment.principal_exists
+        - establishment.already_active
+        - establishment.already_inactive
+        - establishment.closed
+        - party_relationship.party_not_active
+        - party_relationship.overlap
+        - party_relationship.already_ended
+        - external_reference.target_not_active
+        - external_reference.key_duplicate
+        - external_reference.already_unlinked
+        - party_role_type.code_duplicate
+        - party_role_type.already_active
+        - party_role_type.already_inactive
+        - party_role_type.inactive
+    UnprocessableCode:
+      type: string
+      enum:
+        - party.person_not_supported
+        - party.identifier.scheme_unknown
+        - party.identifier.scheme_not_allowed
+        - party.identifier.invalid_format
+        - party.identifier.check_digit_invalid
+        - party.role.type_unknown
+        - party.role.type_not_allowed
+        - establishment.kind_unknown
+        - establishment.kind_not_supported
+        - party_relationship.self_reference
+        - party_relationship.kind_unknown
+        - party_relationship.party_not_found
+        - external_reference.target_not_found
+        - party_role_type.code_invalid
+        - party_role_type.edifact_invalid
+
+    CreatedResponse:
+      type: object
+      required: [id, version]
+      properties:
+        id: { type: string, format: uuid }
+        version: { $ref: '#/components/schemas/Version' }
+      example: { id: 0b9c7e0e-2f4a-4c39-9a51-1f0d7a3e9c11, version: 1 }
+
+    ReasonRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason: { $ref: '#/components/schemas/Reason' }
+    EndValidityRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        validTo:
+          type: string
+          format: date
+          description: Por defecto, hoy (America/Lima, supuesto G-575).
+        reason: { $ref: '#/components/schemas/Reason' }
+
+    IdentifierInput:
+      type: object
+      required: [countryCode, schemeCode, value]
+      properties:
+        countryCode: { $ref: '#/components/schemas/CountryCode' }
+        schemeCode: { $ref: '#/components/schemas/CatalogCode' }
+        value:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Se normaliza (recorte, mayúsculas, sin espacios ni guiones) y se valida con el patrón del esquema; RUC con dígito verificador.
+        validFrom:
+          type: string
+          format: date
+          description: Por defecto, hoy.
+    AddIdentifierRequest:
+      allOf:
+        - $ref: '#/components/schemas/IdentifierInput'
+        - type: object
+          properties:
+            isPrimary: { type: boolean, default: false }
+            replacesPrimary:
+              type: boolean
+              default: false
+              description: Solo con isPrimary true; vence el primario vigente con validTo = validFrom − 1 día (propuesta G-570).
+      example:
+        countryCode: PE
+        schemeCode: PE-RUC
+        value: '20100412447'
+        isPrimary: true
+        replacesPrimary: true
+        validFrom: '2026-11-01'
+    RoleInput:
+      type: object
+      required: [roleTypeCode]
+      additionalProperties: false
+      properties:
+        roleTypeCode: { $ref: '#/components/schemas/CatalogCode' }
+        validFrom:
+          type: string
+          format: date
+          description: Por defecto, hoy.
+        validTo:
+          type: [string, 'null']
+          format: date
+          description: Inclusivo; null es indefinido. Debe ser ≥ validFrom.
+    AssignRoleRequest:
+      $ref: '#/components/schemas/RoleInput'
+    RegisterPartyRequest:
+      type: object
+      required: [type, code, legalName, primaryIdentifier]
+      additionalProperties: false
+      properties:
+        type: { $ref: '#/components/schemas/PartyType' }
+        code: { $ref: '#/components/schemas/Code' }
+        legalName: { $ref: '#/components/schemas/LegalName' }
+        tradeName:
+          type: [string, 'null']
+          maxLength: 200
+        primaryIdentifier: { $ref: '#/components/schemas/IdentifierInput' }
+        roles:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/RoleInput' }
+      example:
+        type: ORGANIZATION
+        code: TRANSPORTES-ANDINOS
+        legalName: TRANSPORTES ANDINOS S.A.C.
+        tradeName: Transandinos
+        primaryIdentifier:
+          countryCode: PE
+          schemeCode: PE-RUC
+          value: '20100412447'
+          validFrom: '2026-10-24'
+        roles:
+          - { roleTypeCode: CUSTOMER, validFrom: '2026-10-24', validTo: null }
+          - { roleTypeCode: CARRIER, validFrom: '2026-11-01', validTo: null }
+    RenamePartyRequest:
+      type: object
+      required: [legalName]
+      additionalProperties: false
+      properties:
+        legalName: { $ref: '#/components/schemas/LegalName' }
+        tradeName:
+          type: [string, 'null']
+          maxLength: 200
+      example: { legalName: ORG S.A., tradeName: Organización }
+
+    PartyIdentifier:
+      type: object
+      required: [identifierId, countryCode, schemeCode, value, isPrimary, validFrom, validTo, isCurrent]
+      properties:
+        identifierId: { type: string, format: uuid }
+        countryCode: { $ref: '#/components/schemas/CountryCode' }
+        schemeCode: { $ref: '#/components/schemas/CatalogCode' }
+        value: { type: string, maxLength: 50 }
+        isPrimary: { type: boolean }
+        validFrom: { type: string, format: date }
+        validTo: { type: [string, 'null'], format: date }
+        isCurrent: { type: boolean, description: Vigente hoy. }
+    PartyRole:
+      type: object
+      required: [roleId, roleTypeCode, status, validFrom, validTo, isCurrent]
+      properties:
+        roleId: { type: string, format: uuid }
+        roleTypeCode: { $ref: '#/components/schemas/CatalogCode' }
+        status: { $ref: '#/components/schemas/RoleStatus' }
+        validFrom: { type: string, format: date }
+        validTo: { type: [string, 'null'], format: date }
+        isCurrent: { type: boolean, description: Active y dentro de su vigencia hoy. }
+
+    Address:
+      type: object
+      required: [line1, countryCode]
+      properties:
+        line1: { type: string, minLength: 1, maxLength: 200 }
+        line2: { type: [string, 'null'], maxLength: 200 }
+        ubigeo:
+          type: [string, 'null']
+          pattern: '^[0-9]{6}$'
+          description: Solo con countryCode PE.
+        department: { type: [string, 'null'], maxLength: 100 }
+        province: { type: [string, 'null'], maxLength: 100 }
+        district: { type: [string, 'null'], maxLength: 100 }
+        postalCode: { type: [string, 'null'], maxLength: 20 }
+        countryCode: { $ref: '#/components/schemas/CountryCode' }
+        reference: { type: [string, 'null'], maxLength: 200 }
+    EstablishmentInput:
+      type: object
+      required: [kindCode, name, address]
+      properties:
+        kindCode: { $ref: '#/components/schemas/CatalogCode' }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        taxEstablishmentCode:
+          type: [string, 'null']
+          pattern: '^[0-9]{4}$'
+          description: Código de establecimiento anexo de SUNAT (formato supuesto, G-576).
+        isPrincipal: { type: boolean, default: false }
+        address: { $ref: '#/components/schemas/Address' }
+    OpenEstablishmentRequest:
+      allOf:
+        - type: object
+          required: [code]
+          properties:
+            code: { $ref: '#/components/schemas/Code' }
+        - $ref: '#/components/schemas/EstablishmentInput'
+      example:
+        code: PIURA
+        kindCode: BRANCH
+        name: Sede Piura
+        taxEstablishmentCode: '0002'
+        isPrincipal: false
+        address: { line1: Av. Ejemplo 456, countryCode: PE, ubigeo: '200101' }
+    ChangeEstablishmentRequest:
+      $ref: '#/components/schemas/EstablishmentInput'
+    Establishment:
+      type: object
+      required: [id, partyId, code, kindCode, name, taxEstablishmentCode, isPrincipal, isActive, isClosed, closedAt, closedBy, address]
+      properties:
+        id: { type: string, format: uuid }
+        partyId: { type: string, format: uuid }
+        code: { $ref: '#/components/schemas/Code' }
+        kindCode: { $ref: '#/components/schemas/CatalogCode' }
+        name: { type: string, maxLength: 200 }
+        taxEstablishmentCode: { type: [string, 'null'], pattern: '^[0-9]{4}$' }
+        isPrincipal: { type: boolean }
+        isActive: { type: boolean, description: Un establecimiento cerrado se publica con false. }
+        isClosed: { type: boolean }
+        closedAt: { type: [string, 'null'], format: date-time }
+        closedBy: { oneOf: [{ $ref: '#/components/schemas/Actor' }, { type: 'null' }] }
+        address: { $ref: '#/components/schemas/Address' }
+
+    Audit:
+      type: object
+      required: [createdAt, createdBy, updatedAt, updatedBy]
+      properties:
+        createdAt: { type: string, format: date-time }
+        createdBy: { $ref: '#/components/schemas/Actor' }
+        updatedAt: { type: [string, 'null'], format: date-time }
+        updatedBy: { oneOf: [{ $ref: '#/components/schemas/Actor' }, { type: 'null' }] }
+    PartySummary:
+      type: object
+      required: [id, type, code, legalName, tradeName, status, primaryIdentifier, currentRoleTypeCodes, version, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: '#/components/schemas/PartyType' }
+        code: { $ref: '#/components/schemas/Code' }
+        legalName: { $ref: '#/components/schemas/LegalName' }
+        tradeName: { type: [string, 'null'], maxLength: 200 }
+        status: { $ref: '#/components/schemas/PartyStatus' }
+        primaryIdentifier:
+          oneOf:
+            - $ref: '#/components/schemas/PartyIdentifier'
+            - type: 'null'
+        currentRoleTypeCodes:
+          type: array
+          items: { $ref: '#/components/schemas/CatalogCode' }
+        version: { $ref: '#/components/schemas/Version' }
+        updatedAt: { type: [string, 'null'], format: date-time }
+    Party:
+      allOf:
+        - $ref: '#/components/schemas/Audit'
+        - type: object
+          required: [id, type, code, legalName, tradeName, status, version, identifiers, roles, establishments]
+          properties:
+            id: { type: string, format: uuid }
+            type: { $ref: '#/components/schemas/PartyType' }
+            code: { $ref: '#/components/schemas/Code' }
+            legalName: { $ref: '#/components/schemas/LegalName' }
+            tradeName: { type: [string, 'null'], maxLength: 200 }
+            status: { $ref: '#/components/schemas/PartyStatus' }
+            version: { $ref: '#/components/schemas/Version' }
+            identifiers:
+              type: array
+              items: { $ref: '#/components/schemas/PartyIdentifier' }
+            roles:
+              type: array
+              items: { $ref: '#/components/schemas/PartyRole' }
+            establishments:
+              type: array
+              items: { $ref: '#/components/schemas/Establishment' }
+      example:
+        id: 0b9c7e0e-2f4a-4c39-9a51-1f0d7a3e9c11
+        type: ORGANIZATION
+        code: ORG
+        legalName: ORG S.A.
+        tradeName: Organización
+        status: Active
+        version: 7
+        identifiers:
+          - identifierId: 5f1d2b8a-90c4-4a7e-8d3b-6a2e1c9f0b47
+            countryCode: PE
+            schemeCode: PE-RUC
+            value: '20100412447'
+            isPrimary: true
+            validFrom: '1978-01-01'
+            validTo: null
+            isCurrent: true
+        roles:
+          - roleId: c3a8e1f2-7b6d-4e59-a0c1-2d4f6b8e9a10
+            roleTypeCode: INTERNAL_COMPANY
+            status: Active
+            validFrom: '1978-01-01'
+            validTo: null
+            isCurrent: true
+        establishments:
+          - id: 7e2c4a91-3d5b-4f60-8a17-b9c0d2e4f681
+            partyId: 0b9c7e0e-2f4a-4c39-9a51-1f0d7a3e9c11
+            code: CALLAO
+            kindCode: BRANCH
+            name: Sede Callao
+            taxEstablishmentCode: '0001'
+            isPrincipal: true
+            isActive: true
+            isClosed: false
+            closedAt: null
+            closedBy: null
+            address:
+              line1: Av. Ejemplo 123
+              line2: null
+              ubigeo: '070101'
+              department: Callao
+              province: Callao
+              district: Callao
+              postalCode: null
+              countryCode: PE
+              reference: null
+        createdAt: '2026-10-24T15:02:11.400+00:00'
+        createdBy: aarroyo
+        updatedAt: '2026-10-24T16:10:00.000+00:00'
+        updatedBy: aarroyo
+
+    PageInfo:
+      type: object
+      required: [page, pageSize, totalCount, totalPages]
+      properties:
+        page: { type: integer, format: int32, minimum: 1 }
+        pageSize: { type: integer, format: int32, minimum: 1, maximum: 100 }
+        totalCount: { type: integer, format: int64, minimum: 0 }
+        totalPages: { type: integer, format: int32, minimum: 0 }
+    PartyPage:
+      allOf:
+        - $ref: '#/components/schemas/PageInfo'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/PartySummary' }
+
+    StartRelationshipRequest:
+      type: object
+      required: [fromPartyId, toPartyId, kindCode]
+      additionalProperties: false
+      properties:
+        fromPartyId: { type: string, format: uuid }
+        toPartyId: { type: string, format: uuid }
+        kindCode: { $ref: '#/components/schemas/CatalogCode' }
+        validFrom:
+          type: string
+          format: date
+          description: Por defecto, hoy.
+        validTo: { type: [string, 'null'], format: date }
+      example:
+        fromPartyId: 9d4e2b1a-6c3f-4a58-b7e0-1f2a3c4d5e60
+        toPartyId: 3b7f9a2c-1d4e-4f60-8b5a-7c9e0d1f2a34
+        kindCode: PARENT_OF
+        validFrom: '2026-10-24'
+        validTo: null
+    PartyRelationship:
+      allOf:
+        - $ref: '#/components/schemas/Audit'
+        - type: object
+          required: [id, fromPartyId, toPartyId, kindCode, validFrom, validTo, isCurrent, status, version]
+          properties:
+            id: { type: string, format: uuid }
+            fromPartyId: { type: string, format: uuid }
+            toPartyId: { type: string, format: uuid }
+            kindCode: { $ref: '#/components/schemas/CatalogCode' }
+            validFrom: { type: string, format: date }
+            validTo: { type: [string, 'null'], format: date }
+            isCurrent: { type: boolean }
+            status: { $ref: '#/components/schemas/RelationshipStatus' }
+            version: { $ref: '#/components/schemas/Version' }
+    PartyRelationshipPage:
+      allOf:
+        - $ref: '#/components/schemas/PageInfo'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/PartyRelationship' }
+
+    LinkExternalReferenceRequest:
+      type: object
+      required: [systemCode, systemInstance, externalObjectType, externalKey, mdmObjectType, mdmObjectId]
+      additionalProperties: false
+      properties:
+        systemCode: { type: string, minLength: 1, maxLength: 50 }
+        systemInstance: { type: string, minLength: 1, maxLength: 50 }
+        externalObjectType: { type: string, minLength: 1, maxLength: 50 }
+        externalKey: { type: string, minLength: 1, maxLength: 100 }
+        mdmObjectType: { $ref: '#/components/schemas/MdmObjectType' }
+        mdmObjectId: { type: string, format: uuid }
+      example:
+        systemCode: ERP
+        systemInstance: PRD-100
+        externalObjectType: COMPANY
+        externalKey: '1000'
+        mdmObjectType: PARTY
+        mdmObjectId: 0b9c7e0e-2f4a-4c39-9a51-1f0d7a3e9c11
+    ExternalReference:
+      allOf:
+        - $ref: '#/components/schemas/Audit'
+        - type: object
+          required: [id, systemCode, systemInstance, externalObjectType, externalKey, mdmObjectType, mdmObjectId, partyId, syncStatus, lastSyncedVersion, version]
+          properties:
+            id: { type: string, format: uuid }
+            systemCode: { type: string, maxLength: 50 }
+            systemInstance: { type: string, maxLength: 50 }
+            externalObjectType: { type: string, maxLength: 50 }
+            externalKey: { type: string, maxLength: 100 }
+            mdmObjectType: { $ref: '#/components/schemas/MdmObjectType' }
+            mdmObjectId: { type: string, format: uuid }
+            partyId:
+              type: string
+              format: uuid
+              description: La Party, o la dueña del establecimiento.
+            syncStatus: { $ref: '#/components/schemas/SyncStatus' }
+            lastSyncedVersion:
+              type: [integer, 'null']
+              format: int64
+              description: Última versión del objeto de MDM confirmada por el sistema externo.
+            version: { $ref: '#/components/schemas/Version' }
+    ExternalReferencePage:
+      allOf:
+        - $ref: '#/components/schemas/PageInfo'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/ExternalReference' }
+
+    IdentifierScheme:
+      type: object
+      required: [code, countryCode, name, issuingAuthority, pattern, isFiscal, iso6523Icd, allowedPartyTypes, isActive]
+      properties:
+        code: { $ref: '#/components/schemas/CatalogCode' }
+        countryCode: { $ref: '#/components/schemas/CountryCode' }
+        name: { type: string, maxLength: 200 }
+        issuingAuthority: { type: [string, 'null'], maxLength: 200 }
+        pattern: { type: string, maxLength: 200, description: Expresión regular que valida el valor normalizado. }
+        isFiscal: { type: boolean }
+        iso6523Icd: { type: [string, 'null'], pattern: '^[0-9]{4}$' }
+        allowedPartyTypes:
+          type: array
+          items: { $ref: '#/components/schemas/PartyType' }
+        isActive: { type: boolean }
+      example:
+        code: PE-RUC
+        countryCode: PE
+        name: Registro Único de Contribuyentes
+        issuingAuthority: SUNAT
+        pattern: '^[0-9]{11}$'
+        isFiscal: true
+        iso6523Icd: null
+        allowedPartyTypes: [ORGANIZATION, PERSON]
+        isActive: true
+    PartyRoleTypeInput:
+      type: object
+      description: Lo editable de un tipo de rol (C-06 y base de C-05).
+      required: [name, allowedPartyTypes, requiresFiscalIdentifier]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200, description: 1 a 200 tras recortar. }
+        description: { type: [string, 'null'], maxLength: 500, description: Opcional; vacío tras recortar es null. }
+        unEdifact3035Code:
+          type: [string, 'null']
+          description: Código del calificador de parte UN/EDIFACT 3035; dos letras mayúsculas (422 party_role_type.edifact_invalid). Se recorta y pasa a mayúsculas.
+        allowedPartyTypes:
+          type: array
+          minItems: 1
+          maxItems: 2
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/PartyType' }
+        requiresFiscalIdentifier: { type: boolean }
+      example:
+        name: Consignatario
+        description: Recibe la carga en destino.
+        unEdifact3035Code: CN
+        allowedPartyTypes: [ORGANIZATION, PERSON]
+        requiresFiscalIdentifier: false
+    CreatePartyRoleTypeRequest:
+      allOf:
+        - $ref: '#/components/schemas/PartyRoleTypeInput'
+        - type: object
+          required: [code]
+          properties:
+            code:
+              type: string
+              minLength: 1
+              maxLength: 100
+              description: Se normaliza (recorte, mayúsculas, espacios y guiones por _) y debe cumplir ^[A-Z][A-Z0-9_]{1,49}$ (422 party_role_type.code_invalid). Inmutable y no reutilizable.
+      example:
+        code: consignee
+        name: Consignatario
+        description: Recibe la carga en destino.
+        unEdifact3035Code: CN
+        allowedPartyTypes: [ORGANIZATION, PERSON]
+        requiresFiscalIdentifier: false
+    RoleTypeCreatedResponse:
+      type: object
+      required: [code, version]
+      properties:
+        code: { $ref: '#/components/schemas/CatalogCode' }
+        version: { $ref: '#/components/schemas/Version' }
+      example: { code: CONSIGNEE, version: 1 }
+    PartyRoleType:
+      type: object
+      required: [code, name, description, unEdifact3035Code, allowedPartyTypes, requiresFiscalIdentifier, isActive, version, createdAt, createdBy, updatedAt, updatedBy]
+      properties:
+        code: { $ref: '#/components/schemas/CatalogCode' }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 500 }
+        unEdifact3035Code: { type: [string, 'null'], pattern: '^[A-Z]{2}$' }
+        allowedPartyTypes:
+          type: array
+          minItems: 1
+          maxItems: 2
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/PartyType' }
+        requiresFiscalIdentifier: { type: boolean }
+        isActive: { type: boolean, description: Desactivado no se asigna a roles nuevos; los roles existentes se conservan. }
+        version: { $ref: '#/components/schemas/Version' }
+        createdAt: { type: string, format: date-time }
+        createdBy: { $ref: '#/components/schemas/Actor' }
+        updatedAt: { type: [string, 'null'], format: date-time }
+        updatedBy: { oneOf: [{ $ref: '#/components/schemas/Actor' }, { type: 'null' }] }
+      example:
+        code: CUSTOMER
+        name: Cliente
+        description: Compra servicios a una empresa del grupo.
+        unEdifact3035Code: BY
+        allowedPartyTypes: [ORGANIZATION, PERSON]
+        requiresFiscalIdentifier: false
+        isActive: true
+        version: 1
+        createdAt: '2024-03-01T14:00:00.000+00:00'
+        createdBy: carga-inicial
+        updatedAt: null
+        updatedBy: null
+    EstablishmentKind:
+      type: object
+      required: [code, name, isSupported, isActive]
+      properties:
+        code: { $ref: '#/components/schemas/CatalogCode' }
+        name: { type: string, maxLength: 200 }
+        isSupported:
+          type: boolean
+          description: false para WAREHOUSE en la primera entrega (G-547).
+        isActive: { type: boolean }
+      example: { code: BRANCH, name: Sede, isSupported: true, isActive: true }
+    RelationshipKind:
+      type: object
+      required: [code, name, fromLabel, toLabel, isActive]
+      properties:
+        code: { $ref: '#/components/schemas/CatalogCode' }
+        name: { type: string, maxLength: 200 }
+        fromLabel: { type: string, maxLength: 100, description: Papel del extremo from. }
+        toLabel: { type: string, maxLength: 100, description: Papel del extremo to. }
+        isActive: { type: boolean }
+      example: { code: PARENT_OF, name: Matriz de, fromLabel: Matriz, toLabel: Filial, isActive: true }

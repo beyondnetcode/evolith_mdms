@@ -1,0 +1,320 @@
+/*
+ * Tokens de diseño de SIL (ADR-0110, D-021, D-023): Material Design 3 expresado como variables
+ * CSS y consumido por Tailwind v4 en modo CSS-first. Ningún componente lleva valores crudos:
+ * todo pasa por un alias `md.sys.*` o un token de componente `md.comp.*`.
+ *
+ * Los tokens NO se escriben aquí: salen de `tokens/*.json` con Style Dictionary
+ * (`scripts/build-tokens.mjs`, P-UX-04, origen único) y llegan por la cadena
+ *   Style Dictionary → CSS Variables → bloque `@theme` → utilidades de Tailwind.
+ * Este archivo solo reúne esas salidas y declara lo que no es un token: el estilo base, las
+ * capas de estado y las utilidades que componen tokens.
+ *
+ * Uso (en la hoja de la app, tras `@import 'tailwindcss'`):
+ *   @import '<ruta>/libs/ui-tokens/src/theme.css';
+ */
+/* Orden obligatorio: primero se retira la paleta, formas y sombras por defecto de Tailwind (solo existen las de M3). */
+@import './theme-reset.css';
+@import './colors.generated.css';
+@import './tokens.generated.css';
+@import './theme-map.generated.css';
+
+/* Valores especiales de Tailwind y transición por defecto, ligados a los tokens de movimiento. */
+@theme inline {
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --default-transition-duration: var(--md-sys-motion-duration-short4);
+  --default-transition-timing-function: var(--md-sys-motion-easing-standard);
+}
+
+/* Variables que componen tokens y que cada contenedor redefine; no son tokens nuevos (UI-SIL-001 §3.11 y §4.5). */
+:root {
+  /* Altura de fila y de cabecera de la tabla de datos: cómoda por defecto. */
+  --table-row-two-lines: var(--md-comp-data-table-row-two-lines-height);
+  --table-row-one-line: var(--md-comp-data-table-row-one-line-height);
+  --table-header: var(--md-comp-data-table-header-height);
+
+  /* Fondo del contenedor de un campo: la muesca de la etiqueta delineada lo toma para no asomar como un parche de
+     otro tono dentro de una hoja o de un diálogo (UI-09). Es un color de rol, que cambia con el esquema: por eso se
+     enlaza con var() y no se congela en un token de componente. */
+  --field-background: var(--md-sys-color-surface);
+}
+
+/* Densidad compacta de la tabla de datos (UI-SIL-001 §3.11). */
+[data-density='compact'] {
+  --table-row-two-lines: var(--md-comp-data-table-compact-row-two-lines-height);
+  --table-row-one-line: var(--md-comp-data-table-compact-row-one-line-height);
+  --table-header: var(--md-comp-data-table-compact-header-height);
+}
+
+@layer base {
+  html {
+    font-family: var(--md-sys-typeface-plain);
+    background-color: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Indicador de foco de M3: anillo en `secondary`, separado del control, solo con teclado. Nunca se
+     suprime (WCAG 2.4.7 y 2.4.11). */
+  :focus-visible {
+    outline: var(--md-comp-focus-ring-width) solid var(--md-sys-color-secondary);
+    outline-offset: var(--md-comp-focus-ring-offset);
+  }
+
+  /* Cifras tabulares en las tablas (anexo A1 §11.6, M-11): los dígitos de las columnas numéricas y de fechas se alinean. */
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* La búsqueda de M3 trae su propio botón de borrar: se oculta el del navegador. */
+  input[type='search']::-webkit-search-cancel-button {
+    display: none;
+  }
+
+  /* Los resúmenes plegables llevan su propio icono de expandir. */
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* Objetivos que el contenido fijo (la barra de 64 dp y la de acciones) no debe tapar al recibir el foco
+     (WCAG 2.4.11, R-27, ADR-0110 §2.8). */
+  :target,
+  :focus {
+    scroll-margin-block: var(--md-comp-focus-scroll-margin-start) var(--md-comp-focus-scroll-margin-end);
+  }
+}
+
+/* Capas de estado de M3 sobre el color del contenido (ADR-0110 §2.7, UI-SIL-001 §3.9): hover 8 %, foco y pulsado
+   10 %, arrastrado 16 %. El hover solo existe donde hay un puntero que pasa por encima (`@media (hover: hover)`),
+   para que no se quede pegado tras un toque. El deshabilitado lo resuelve cada componente con `on-surface` al
+   12 % y 38 %. El foco en elementos recortados (filas, tarjetas) usa `data-inset-focus`: el anillo va hacia dentro. */
+@utility state-layer {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-color: currentColor;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+  }
+  @media (hover: hover) {
+    &:where(:hover, [data-hover='true']):not(:disabled, [aria-disabled='true'])::before {
+      opacity: var(--md-sys-state-hover-state-layer-opacity);
+    }
+  }
+  &:where([data-hover='true']):not(:disabled, [aria-disabled='true'])::before {
+    opacity: var(--md-sys-state-hover-state-layer-opacity);
+  }
+  &:where(:focus-visible):not(:disabled, [aria-disabled='true'])::before {
+    opacity: var(--md-sys-state-focus-state-layer-opacity);
+  }
+  &:where(:active):not(:disabled, [aria-disabled='true'])::before {
+    opacity: var(--md-sys-state-pressed-state-layer-opacity);
+  }
+  &:where([data-dragged='true'])::before {
+    opacity: var(--md-sys-state-dragged-state-layer-opacity);
+  }
+  &[data-inset-focus]:focus-visible {
+    outline-offset: calc(-1 * var(--md-comp-focus-ring-width));
+  }
+}
+
+/* Botón de icono: círculo visible de 40 dp dentro de un objetivo de 48 dp (WCAG 2.5.8). */
+@utility state-layer-icon {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0.25rem;
+    z-index: -1;
+    border-radius: var(--md-sys-shape-corner-full);
+    background-color: currentColor;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+  }
+  @media (hover: hover) {
+    &:hover:not(:disabled, [aria-disabled='true'])::before {
+      opacity: var(--md-sys-state-hover-state-layer-opacity);
+    }
+  }
+  &:focus-visible:not(:disabled, [aria-disabled='true'])::before {
+    opacity: var(--md-sys-state-focus-state-layer-opacity);
+  }
+  &:active:not(:disabled, [aria-disabled='true'])::before {
+    opacity: var(--md-sys-state-pressed-state-layer-opacity);
+  }
+}
+
+/* Fila de lista o de tabla interactiva: la capa de estado va sobre toda la fila y el anillo de foco hacia
+   dentro, para que un contenedor con `overflow` no lo recorte (UI-SIL-001 §3.9). */
+@utility row-state {
+  position: relative;
+  isolation: isolate;
+  @media (hover: hover) {
+    &:hover {
+      background-color: color-mix(in srgb, var(--md-sys-color-on-surface) calc(var(--md-sys-state-hover-state-layer-opacity) * 100%), transparent);
+    }
+  }
+  &:focus-within {
+    background-color: color-mix(in srgb, var(--md-sys-color-on-surface) calc(var(--md-sys-state-focus-state-layer-opacity) * 100%), transparent);
+  }
+  /* El anillo de foco de M3 en `secondary` hacia dentro: ningún `overflow` lo recorta. */
+  &:has(:focus-visible),
+  &:focus-visible {
+    outline: var(--md-comp-focus-ring-width) solid var(--md-sys-color-secondary);
+    outline-offset: calc(-1 * var(--md-comp-focus-ring-width));
+  }
+}
+
+/* Movimiento reducido (ADR-0110 P-UX-07): las transiciones pasan a un fundido instantáneo. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: var(--md-sys-motion-duration-reduced) !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: var(--md-sys-motion-duration-reduced) !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Objetivo táctil de 48 × 48 dp (ADR-0110 §2.3, WCAG 2.5.8) para controles visualmente más
+   bajos: botones de 40 dp y chips de 32 dp. El área extra no cambia el diseño visible. */
+@utility target-48 {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 50%;
+    min-height: var(--md-comp-touch-target-size);
+    height: 100%;
+    transform: translateY(-50%);
+  }
+}
+
+/* Listas desplazables en horizontal (pestañas y chips en `compact`) sin barra visible. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Anchos de superposiciones: máximo de M3 y margen en pantallas estrechas (tokens de componente). */
+@utility dialog-width {
+  width: var(--md-comp-dialog-width);
+}
+@utility sheet-width {
+  width: var(--md-comp-side-sheet-width);
+}
+@utility rail-width {
+  width: var(--md-comp-navigation-rail-modal-width);
+}
+
+/* El contenedor de los campos redefine el fondo de la muesca de la etiqueta (UI-09): hoja y diálogo. */
+@utility field-container-low {
+  --field-background: var(--md-sys-color-surface-container-low);
+}
+@utility field-container-high {
+  --field-background: var(--md-sys-color-surface-container-high);
+}
+
+/* Altura de fila y de cabecera de la tabla de datos: tokens de componente con densidad (§3.11). */
+@utility h-row-two-lines {
+  height: var(--table-row-two-lines);
+}
+@utility h-row-one-line {
+  height: var(--table-row-one-line);
+}
+@utility h-table-header {
+  height: var(--table-header);
+}
+
+/* Lista-detalle de la bandeja desde `large` (R-17, EX-02): tabla de al menos 672 dp y vista previa de 360 dp. */
+@utility grid-list-detail {
+  grid-template-columns: minmax(var(--md-comp-list-detail-list-min-width), 1fr) var(--md-comp-list-detail-detail-width);
+}
+
+/* Cabecera de formulario de dos columnas: índice de secciones y contenido (P-02). */
+@utility grid-form-index {
+  grid-template-columns: var(--md-comp-form-index-index-width) 1fr;
+}
+
+/* Fecha y hora en un mismo campo compuesto: la fecha ocupa tres quintos y la hora dos (patrón DateTimeField). */
+@utility grid-date-time {
+  grid-template-columns: 3fr 2fr;
+}
+
+/* Superposiciones (UI-SIL-001 §3.8, UI-10): entrada de 300 ms con `emphasized-decelerate` y SALIDA de 200 ms
+   con `emphasized-accelerate`. El `<dialog>` cerrado pasa a `display: none`; `allow-discrete` deja que el
+   navegador anime la salida antes de ocultarlo. Con movimiento reducido solo hay fundido (sin desplazamiento). */
+@utility enter-animation {
+  opacity: 0;
+  translate: 0 0.75rem;
+  transition:
+    opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate),
+    translate var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate),
+    overlay var(--md-sys-motion-duration-short4) allow-discrete,
+    display var(--md-sys-motion-duration-short4) allow-discrete;
+  &[open] {
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate),
+      translate var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate),
+      overlay var(--md-sys-motion-duration-medium2) allow-discrete,
+      display var(--md-sys-motion-duration-medium2) allow-discrete;
+    @starting-style {
+      opacity: 0;
+      translate: 0 0.75rem;
+    }
+  }
+  &::backdrop {
+    opacity: 0;
+    transition:
+      opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard),
+      overlay var(--md-sys-motion-duration-short4) allow-discrete,
+      display var(--md-sys-motion-duration-short4) allow-discrete;
+  }
+  &[open]::backdrop {
+    opacity: 1;
+    @starting-style {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    translate: none;
+    &[open] {
+      translate: none;
+      @starting-style {
+        translate: none;
+      }
+    }
+  }
+}
+
+/* Barra de progreso indeterminada (carga por región, sin bloquear la pantalla). Con movimiento reducido es una
+   barra estática y el texto «Cargando…» se ve (UI-SIL-001 §3.8). */
+@keyframes indeterminate-progress {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 250% 0;
+  }
+}
+@utility indeterminate-animation {
+  animation: indeterminate-progress var(--md-comp-progress-indicator-indeterminate-duration) var(--md-sys-motion-easing-standard) infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    translate: 0 0;
+  }
+}

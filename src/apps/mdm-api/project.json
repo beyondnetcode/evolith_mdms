@@ -1,0 +1,42 @@
+{
+  "name": "mdm-api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/mdm-api",
+  "tags": ["type:app", "runtime:dotnet", "scope:mdm"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "dotnet build Mdm.slnx --nologo -v q",
+        "cwd": "apps/mdm-api"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["build"],
+      "options": {
+        "command": "bash ../../../scripts/verify-local.sh tests-dotnet",
+        "cwd": "apps/mdm-api"
+      }
+    },
+    "coverage": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "bash ../../../scripts/coverage-dotnet.sh . --ci",
+        "cwd": "apps/mdm-api"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "dotnet run --project Mdm.Presentation --launch-profile http",
+        "cwd": "apps/mdm-api"
+      }
+    }
+  }
+}

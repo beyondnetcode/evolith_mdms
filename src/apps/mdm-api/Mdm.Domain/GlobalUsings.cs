@@ -1,0 +1,9 @@
+global using Mdm.Domain.Kernel;
+global using Mdm.Domain.Kernel.ValueObjects;
+global using Unimar.Shells.Net.Ddd;
+global using Unimar.Shells.Net.Ddd.Interfaces;
+global using Unimar.Shells.Net.Ddd.Rules;
+global using Unimar.Shells.Net.Ddd.Rules.Impl;
+global using Unimar.Shells.Net.Ddd.Services.Impl;
+global using Unimar.Shells.Net.Ddd.ValueObjects.Audit;
+global using Unimar.Shells.Net.Ddd.ValueObjects.Common;

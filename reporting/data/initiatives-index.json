@@ -1,0 +1,165 @@
+{
+  "_nota": "Índice de iniciativas (PRDs) de organizacion-unilog, publicado por el satélite para la ingesta federada del Tablero SDLC de organizacion_arch (S-25, ADR-0140). El core no custodia este contenido: lo lee de esta ruta. `salud`, `calidad`, `produccion` y `ai` viajan como `na` porque no se han evaluado. `riesgo: alta` refleja las dependencias no observadas que declara el PRD: XMS vacío (G-022), CMS sin repositorio (G-024) y el fit-gap de LOGAWARE pendiente (G-023). PRD-MDM-001 (MDM, alojado provisionalmente aquí por D-027) entra con `riesgo: alta` por las dependencias que declara su §8: ADR-0264/0265 sin publicar en el plugin (G-554), ERP sin confirmar (G-545) y contrato con UMS en consulta (G-553). PRD-MDM-002 (geografía de la suite, deriva de PRD-MDM-001) entra con `riesgo: alta` por las dependencias que declara su §8: licencia de UN/LOCODE contradictoria, esquema de ubigeo sin decidir (G-538) y dueño funcional del catálogo sin designar (G-555).",
+  "generado_en": "2026-09-24T21:00:00-05:00",
+  "estandar_ref": "organizacion-core@1.103.0",
+  "satellite": "organizacion-unilog",
+  "producto": "ORG SIL (UNILOG)",
+  "tipo_entidad": "PRD",
+  "descripcion_producto": "Sistema de Servicios Logísticos de la suite Organización: orquesta el servicio logístico sobre un expediente único, desde la solicitud hasta la ejecución, el cierre documental y la liquidación, integrando con LOGAWARE (transporte), SAP (facturación y pagos) y los sistemas de la suite.",
+  "facetas": {
+    "estado": [
+      "propuesta",
+      "aprobada",
+      "en-ejecucion",
+      "en-pausa",
+      "en-produccion",
+      "completada",
+      "cancelada"
+    ],
+    "salud": [
+      "verde",
+      "ambar",
+      "rojo",
+      "na"
+    ],
+    "fase": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "riesgo": [
+      "critica",
+      "alta",
+      "media",
+      "baja"
+    ],
+    "tipo": [
+      "iniciativa",
+      "feature",
+      "entregable",
+      "cambio"
+    ]
+  },
+  "documentos": [
+    {
+      "ref": "PRD-SIL-001",
+      "satellite": "organizacion-unilog",
+      "tipo": "iniciativa",
+      "titulo": "SIL — Orquestación del servicio de transporte",
+      "producto": "ORG SIL (UNILOG)",
+      "version": "0.4.4",
+      "descripcion": "Lo que SIL construye para orquestar el servicio de transporte, desde la solicitud en Planificación hasta «Servicio ejecutado»: orden de transporte hacia LOGAWARE, puerta de crédito, valorización, recepción de la ejecución, incidencias como objeto del expediente, cierre y publicación. El transporte lo ejecuta LOGAWARE (TMS de terceros) vía XMS.",
+      "estado": "propuesta",
+      "salud": "na",
+      "fase": 1,
+      "fase_nombre": "Concepción y Descubrimiento",
+      "riesgo": "alta",
+      "calidad": "na",
+      "produccion": "na",
+      "ai": "na",
+      "owner": "Organización S.A.",
+      "repo_path": "docs/01-concepcion/prd-sil-001.es.md",
+      "componentes_impactados": [
+        "planificacion",
+        "expediente",
+        "costos",
+        "suministros",
+        "documentario",
+        "operacion",
+        "integracion-logaware"
+      ],
+      "palabras_clave": [
+        "sil",
+        "unilog",
+        "transporte",
+        "logaware",
+        "tms",
+        "orden-de-transporte",
+        "expediente",
+        "planificacion",
+        "xms",
+        "outbox"
+      ],
+      "texto": "sil unilog orquestacion servicio de transporte logaware tms orden de transporte expediente planificacion puerta de credito valorizacion hitos incidencias evidencias cierre servicio ejecutado xms acl outbox"
+    },
+    {
+      "ref": "PRD-MDM-001",
+      "satellite": "organizacion-unilog",
+      "tipo": "iniciativa",
+      "titulo": "MDM — Maestro de organizaciones y partes de la suite",
+      "producto": "ORG MDM (alojado provisionalmente en UNILOG)",
+      "version": "0.1.0",
+      "descripcion": "Registro único de organizaciones de la suite con sus identificadores, roles con vigencia, establecimientos, relaciones, referencias al ERP y catálogo de tipos de rol. PRD elaborado a posteriori: ordena la cadena PRD → diseño → construcción de D-031, D-043, D-044 y D-046 sin cambiar ninguna decisión.",
+      "estado": "propuesta",
+      "salud": "na",
+      "fase": 1,
+      "fase_nombre": "Concepción y Descubrimiento",
+      "riesgo": "alta",
+      "calidad": "na",
+      "produccion": "na",
+      "ai": "na",
+      "owner": "Organización S.A.",
+      "repo_path": "docs/01-concepcion/prd-mdm-001.es.md",
+      "componentes_impactados": [
+        "mdm-api",
+        "mdm-app",
+        "mdm-contracts",
+        "mdm-mock"
+      ],
+      "palabras_clave": [
+        "mdm",
+        "datos-maestros",
+        "party",
+        "organizacion",
+        "rol",
+        "establecimiento",
+        "erp",
+        "ums"
+      ],
+      "texto": "mdm datos maestros organizaciones partes party identificadores ruc roles vigencia establecimientos sedes relaciones referencias erp catalogo tipos de rol ums tenant sucursal duplicados"
+    },
+    {
+      "ref": "PRD-MDM-002",
+      "satellite": "organizacion-unilog",
+      "tipo": "iniciativa",
+      "titulo": "MDM — Geografía de la suite: países, divisiones administrativas, ubigeo y lugares de comercio exterior",
+      "producto": "ORG MDM (alojado provisionalmente en UNILOG)",
+      "version": "0.1.0",
+      "descripcion": "Catálogo geográfico único de la suite: países ISO 3166-1, escalera de niveles por país con ubigeo e ISO 3166-2, lugares de comercio exterior UN/LOCODE, códigos postales y coordenadas y geocodificación por etapas, con varios códigos por lugar, sucesión con vigencia y licencia por fuente. Deriva de PRD-MDM-001; base: el análisis de fuentes de geografía.",
+      "estado": "propuesta",
+      "salud": "na",
+      "fase": 1,
+      "fase_nombre": "Concepción y Descubrimiento",
+      "riesgo": "alta",
+      "calidad": "na",
+      "produccion": "na",
+      "ai": "na",
+      "owner": "Organización S.A.",
+      "repo_path": "docs/01-concepcion/prd-mdm-002.es.md",
+      "componentes_impactados": [
+        "mdm-api",
+        "mdm-app",
+        "mdm-contracts",
+        "mdm-mock"
+      ],
+      "palabras_clave": [
+        "mdm",
+        "datos-maestros",
+        "geografia",
+        "ubigeo",
+        "iso-3166",
+        "un-locode",
+        "codigo-postal",
+        "comercio-exterior"
+      ],
+      "texto": "mdm datos maestros geografia paises iso 3166 subdivisiones divisiones administrativas departamento provincia distrito ubigeo inei reniec sunat un locode puertos aeropuertos comercio exterior codigos postales coordenadas geocodificacion sucesion vigencia licencias"
+    }
+  ],
+  "_meta": {
+    "generado_en": "2026-09-24T21:00:00-05:00",
+    "generado_por": "organizacion-unilog",
+    "derivado_de": "docs/01-concepcion/prd-sil-001.es.md"
+  }
+}

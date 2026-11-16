@@ -1,0 +1,5 @@
+{
+  "$comment": "Presupuesto de bundle de sil-web (ADR-0109 P-FE-09 y §2.11). Cifras en kB comprimidos con gzip de lo que el navegador descarga ANTES de pintar la primera pantalla: el script de entrada, los chunks precargados y la hoja de estilos. La cifra de partida es la de «Bundle inicial < 200 KB» de la estrategia de frontend web del estándar; se baja cuando haya medición de campo (G-151). Se audita con `npm run bundle:check`, que bloquea en scripts/verify-local.sh.",
+  "jsInicialGzipKB": 200,
+  "cssInicialGzipKB": 30
+}

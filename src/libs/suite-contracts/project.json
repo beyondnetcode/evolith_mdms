@@ -1,0 +1,21 @@
+{
+  "name": "suite-contracts",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "libs/suite-contracts/src",
+  "tags": ["scope:suite-api", "type:contracts"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": { "command": "tsc -p libs/suite-contracts/tsconfig.json", "cwd": "{workspaceRoot}" }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "eslint libs/suite-contracts", "cwd": "{workspaceRoot}" }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "vitest run libs/suite-contracts --passWithNoTests", "cwd": "{workspaceRoot}" }
+    }
+  }
+}

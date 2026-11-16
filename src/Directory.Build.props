@@ -1,0 +1,23 @@
+<Project>
+  <!--
+    Base común de todos los proyectos .NET de src/ (S-37, ADR-0210, ADR-0056 D4).
+    SonarAnalyzer como analizador Roslyn sin servidor; todo aviso rompe el build.
+    Los umbrales de R4 se parametrizan en SonarLint.xml.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Restauración reproducible: packages.lock.json por proyecto (ADR-0066 §3.1). La versión vive en Directory.Packages.props. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SonarAnalyzer.CSharp">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)SonarLint.xml" Link="SonarLint.xml" />
+  </ItemGroup>
+</Project>

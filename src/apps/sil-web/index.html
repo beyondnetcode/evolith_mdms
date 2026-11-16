@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <!-- Tema sin parpadeo (anexo A1 §9.3): síncrono, del mismo origen y antes de la hoja de estilos. -->
+    <script src="/tema-inicial.js"></script>
+    <!-- Favicon (anexo A1 §11.6, M-09): marcador de posición con variante para navegador oscuro (G-194). -->
+    <link rel="icon" type="image/svg+xml" href="/marca/favicon.svg" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/svg+xml" href="/marca/favicon-oscuro.svg" media="(prefers-color-scheme: dark)" />
+    <title>Suite</title>
+  </head>
+  <body>
+    <div id="raiz"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

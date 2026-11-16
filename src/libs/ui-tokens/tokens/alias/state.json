@@ -1,0 +1,26 @@
+{
+  "md": {
+    "sys": {
+      "state": {
+        "hover-state-layer-opacity": {
+          "$value": "{md.ref.state.hover}"
+        },
+        "focus-state-layer-opacity": {
+          "$value": "{md.ref.state.focus}"
+        },
+        "pressed-state-layer-opacity": {
+          "$value": "{md.ref.state.pressed}"
+        },
+        "dragged-state-layer-opacity": {
+          "$value": "{md.ref.state.dragged}"
+        },
+        "disabled-container-opacity": {
+          "$value": "{md.ref.state.disabled-container}"
+        },
+        "disabled-content-opacity": {
+          "$value": "{md.ref.state.disabled-content}"
+        }
+      }
+    }
+  }
+}

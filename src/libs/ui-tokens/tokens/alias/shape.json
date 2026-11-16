@@ -1,0 +1,31 @@
+{
+  "md": {
+    "sys": {
+      "shape": {
+        "corner": {
+          "none": {
+            "$value": "{md.ref.shape.none}"
+          },
+          "xs": {
+            "$value": "{md.ref.shape.extra-small}"
+          },
+          "sm": {
+            "$value": "{md.ref.shape.small}"
+          },
+          "md": {
+            "$value": "{md.ref.shape.medium}"
+          },
+          "lg": {
+            "$value": "{md.ref.shape.large}"
+          },
+          "xl": {
+            "$value": "{md.ref.shape.extra-large}"
+          },
+          "full": {
+            "$value": "{md.ref.shape.full}"
+          }
+        }
+      }
+    }
+  }
+}

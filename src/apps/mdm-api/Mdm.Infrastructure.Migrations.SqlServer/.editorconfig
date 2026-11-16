@@ -1,0 +1,9 @@
+# Código generado por `dotnet ef migrations add`: no se revisa a mano. Solo se relajan los umbrales
+# de tamaño de ADR-0056 D4 (R4), que un `Up` de esquema rompe por construcción; el resto de reglas
+# sigue en error. El diseño del esquema vive en Mdm.Infrastructure/Persistence/Configurations.
+[Migrations/*.cs]
+generated_code = true
+dotnet_diagnostic.S138.severity = none
+dotnet_diagnostic.S1541.severity = none
+dotnet_diagnostic.S107.severity = none
+dotnet_diagnostic.S134.severity = none

@@ -1,0 +1,20 @@
+{
+  "md": {
+    "sys": {
+      "window": {
+        "medium": {
+          "$value": "{md.ref.window.medium}"
+        },
+        "expanded": {
+          "$value": "{md.ref.window.expanded}"
+        },
+        "large": {
+          "$value": "{md.ref.window.large}"
+        },
+        "extra-large": {
+          "$value": "{md.ref.window.extra-large}"
+        }
+      }
+    }
+  }
+}

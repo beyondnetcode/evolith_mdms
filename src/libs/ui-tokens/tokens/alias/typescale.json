@@ -1,0 +1,262 @@
+{
+  "md": {
+    "sys": {
+      "typescale": {
+        "display-large": {
+          "size": {
+            "$value": "3.5625rem"
+          },
+          "line-height": {
+            "$value": "4rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-regular}"
+          },
+          "tracking": {
+            "$value": "-0.015625rem"
+          }
+        },
+        "display-medium": {
+          "size": {
+            "$value": "2.8125rem"
+          },
+          "line-height": {
+            "$value": "3.25rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-regular}"
+          }
+        },
+        "display-small": {
+          "size": {
+            "$value": "2.25rem"
+          },
+          "line-height": {
+            "$value": "2.75rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-regular}"
+          }
+        },
+        "display-small-emphasized": {
+          "size": {
+            "$value": "2.25rem"
+          },
+          "line-height": {
+            "$value": "2.75rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-medium}"
+          },
+          "$description": "Variantes con énfasis (UI-SIL-001 §3.4, UI-05): tokens LOCALES PROVISIONALES con peso 500, dentro de D-023 (pesos 400 y 500). Sustituirán a los valores de las variantes emphasized de M3 Expressive cuando se verifiquen (G-232). El peso va en el token: los componentes no usan `font-medium` suelto."
+        },
+        "headline-large": {
+          "size": {
+            "$value": "2rem"
+          },
+          "line-height": {
+            "$value": "2.5rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-regular}"
+          }
+        },
+        "headline-medium": {
+          "size": {
+            "$value": "1.75rem"
+          },
+          "line-height": {
+            "$value": "2.25rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-regular}"
+          }
+        },
+        "headline-small": {
+          "size": {
+            "$value": "1.5rem"
+          },
+          "line-height": {
+            "$value": "2rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-regular}"
+          }
+        },
+        "headline-small-emphasized": {
+          "size": {
+            "$value": "1.5rem"
+          },
+          "line-height": {
+            "$value": "2rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-medium}"
+          }
+        },
+        "title-large": {
+          "size": {
+            "$value": "1.375rem"
+          },
+          "line-height": {
+            "$value": "1.75rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-regular}"
+          }
+        },
+        "title-large-emphasized": {
+          "size": {
+            "$value": "1.375rem"
+          },
+          "line-height": {
+            "$value": "1.75rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-medium}"
+          }
+        },
+        "title-medium": {
+          "size": {
+            "$value": "1rem"
+          },
+          "line-height": {
+            "$value": "1.5rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-medium}"
+          },
+          "tracking": {
+            "$value": "0.009375rem"
+          }
+        },
+        "title-small": {
+          "size": {
+            "$value": "0.875rem"
+          },
+          "line-height": {
+            "$value": "1.25rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-medium}"
+          },
+          "tracking": {
+            "$value": "0.00625rem"
+          }
+        },
+        "body-large": {
+          "size": {
+            "$value": "1rem"
+          },
+          "line-height": {
+            "$value": "1.5rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-regular}"
+          },
+          "tracking": {
+            "$value": "0.03125rem"
+          }
+        },
+        "body-large-emphasized": {
+          "size": {
+            "$value": "1rem"
+          },
+          "line-height": {
+            "$value": "1.5rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-medium}"
+          },
+          "tracking": {
+            "$value": "0.03125rem"
+          }
+        },
+        "body-medium": {
+          "size": {
+            "$value": "0.875rem"
+          },
+          "line-height": {
+            "$value": "1.25rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-regular}"
+          },
+          "tracking": {
+            "$value": "0.015625rem"
+          }
+        },
+        "body-medium-emphasized": {
+          "size": {
+            "$value": "0.875rem"
+          },
+          "line-height": {
+            "$value": "1.25rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-medium}"
+          },
+          "tracking": {
+            "$value": "0.015625rem"
+          }
+        },
+        "body-small": {
+          "size": {
+            "$value": "0.75rem"
+          },
+          "line-height": {
+            "$value": "1rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-regular}"
+          },
+          "tracking": {
+            "$value": "0.025rem"
+          }
+        },
+        "label-large": {
+          "size": {
+            "$value": "0.875rem"
+          },
+          "line-height": {
+            "$value": "1.25rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-medium}"
+          },
+          "tracking": {
+            "$value": "0.00625rem"
+          }
+        },
+        "label-medium": {
+          "size": {
+            "$value": "0.75rem"
+          },
+          "line-height": {
+            "$value": "1rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-medium}"
+          },
+          "tracking": {
+            "$value": "0.03125rem"
+          }
+        },
+        "label-small": {
+          "size": {
+            "$value": "0.6875rem"
+          },
+          "line-height": {
+            "$value": "1rem"
+          },
+          "weight": {
+            "$value": "{md.ref.typeface.weight-medium}"
+          },
+          "tracking": {
+            "$value": "0.03125rem"
+          }
+        }
+      }
+    }
+  }
+}

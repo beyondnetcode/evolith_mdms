@@ -1,0 +1,12 @@
+<Solution>
+  <Project Path="Mdm.Application.Test/Mdm.Application.Test.csproj" />
+  <Project Path="Mdm.Application/Mdm.Application.csproj" />
+  <Project Path="Mdm.Domain.Test/Mdm.Domain.Test.csproj" />
+  <Project Path="Mdm.Domain/Mdm.Domain.csproj" />
+  <Project Path="Mdm.Infrastructure.Migrations.SqlServer/Mdm.Infrastructure.Migrations.SqlServer.csproj" />
+  <Project Path="Mdm.Infrastructure.IntegrationTest/Mdm.Infrastructure.IntegrationTest.csproj" />
+  <Project Path="Mdm.Infrastructure.Test/Mdm.Infrastructure.Test.csproj" />
+  <Project Path="Mdm.Infrastructure/Mdm.Infrastructure.csproj" />
+  <Project Path="Mdm.Presentation.IntegrationTest/Mdm.Presentation.IntegrationTest.csproj" />
+  <Project Path="Mdm.Presentation/Mdm.Presentation.csproj" />
+</Solution>

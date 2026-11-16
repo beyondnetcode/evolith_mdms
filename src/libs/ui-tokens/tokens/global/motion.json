@@ -1,0 +1,50 @@
+{
+  "md": {
+    "ref": {
+      "motion": {
+        "easing": {
+          "$description": "En web M3 no define `emphasized` como curva cúbica (es una trayectoria compuesta): se usa su aproximación canónica, igual a `standard`.",
+          "standard": {
+            "$value": "cubic-bezier(0.2, 0, 0, 1)"
+          },
+          "standard-decelerate": {
+            "$value": "cubic-bezier(0, 0, 0, 1)"
+          },
+          "standard-accelerate": {
+            "$value": "cubic-bezier(0.3, 0, 1, 1)"
+          },
+          "emphasized": {
+            "$value": "cubic-bezier(0.2, 0, 0, 1)"
+          },
+          "emphasized-decelerate": {
+            "$value": "cubic-bezier(0.05, 0.7, 0.1, 1)"
+          },
+          "emphasized-accelerate": {
+            "$value": "cubic-bezier(0.3, 0, 0.8, 0.15)"
+          }
+        },
+        "duration": {
+          "short3": {
+            "$value": "150ms"
+          },
+          "short4": {
+            "$value": "200ms"
+          },
+          "medium1": {
+            "$value": "250ms"
+          },
+          "medium2": {
+            "$value": "300ms"
+          },
+          "extra-long2": {
+            "$value": "1600ms"
+          },
+          "reduced": {
+            "$value": "0.01ms",
+            "$description": "Con movimiento reducido (P-UX-07) toda duración colapsa a un fundido instantáneo."
+          }
+        }
+      }
+    }
+  }
+}

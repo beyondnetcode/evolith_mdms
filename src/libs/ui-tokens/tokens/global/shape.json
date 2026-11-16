@@ -1,0 +1,29 @@
+{
+  "md": {
+    "ref": {
+      "shape": {
+        "none": {
+          "$value": "0"
+        },
+        "extra-small": {
+          "$value": "0.25rem"
+        },
+        "small": {
+          "$value": "0.5rem"
+        },
+        "medium": {
+          "$value": "0.75rem"
+        },
+        "large": {
+          "$value": "1rem"
+        },
+        "extra-large": {
+          "$value": "1.75rem"
+        },
+        "full": {
+          "$value": "9999px"
+        }
+      }
+    }
+  }
+}

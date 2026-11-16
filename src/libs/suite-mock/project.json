@@ -1,0 +1,21 @@
+{
+  "name": "suite-mock",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "libs/suite-mock/src",
+  "tags": ["scope:suite", "type:mock"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": { "command": "tsc -p libs/suite-mock/tsconfig.json", "cwd": "{workspaceRoot}" }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "eslint libs/suite-mock", "cwd": "{workspaceRoot}" }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "vitest run libs/suite-mock --passWithNoTests", "cwd": "{workspaceRoot}" }
+    }
+  }
+}

@@ -1,0 +1,3203 @@
+openapi: 3.1.0
+info:
+  title: MDM — geografía de la suite (Geography)
+  version: 0.1.0
+  summary: Contrato API-MDM-003 de mdm-api para países, lugares, códigos oficiales, sucesiones, comercio exterior, zonas postales, importaciones, esquemas y fuentes.
+  description: |
+    Documento máquina del contrato `API-MDM-003` (Borrador, sin implementación).
+    La prosa y el porqué de cada regla están en `contrato-api-geografia-mdm-003.es.md`;
+    el modelo de datos en `MD-MDM-003`. Deriva de PRD-MDM-002, ADR-MDM-002 (Borrador)
+    y ADR-0266 (Aceptado). Es la fuente del mock del frontend.
+
+    Concurrencia: toda escritura sobre un recurso existente exige `If-Match` con la
+    versión del agregado dueño (GeoPlace, CountryTerritorialSchema, CodeScheme,
+    CodeCorrespondence, Succession, PostalZone, ImportBatch o SourceLicense).
+    Nombres, códigos y funciones comparten la versión de su lugar.
+
+    Permisos (SUPUESTO, G-622): L = geo.read, M = geo.maintain, A = geo.approve.
+    Datos con licencia InternalOnly se omiten para clientes de distribución externa (G-623).
+  contact:
+    name: Organización S.A.
+  license:
+    name: Propietaria — © Organización S.A.
+    identifier: LicenseRef-Organización-Proprietary
+servers:
+  - url: /api/v1
+    description: Prefijo común de mdm-api
+security:
+  - umsBearer: []
+tags:
+  - name: Countries
+    description: Países (lugar de tipo Country) y su política territorial (agregado aparte)
+  - name: Places
+    description: Agregado GeoPlace, búsqueda, resolución por código y vistas
+  - name: Codes
+    description: Códigos oficiales del lugar (versión del lugar)
+  - name: Correspondences
+    description: Agregado CodeCorrespondence (versión propia)
+  - name: Successions
+    description: Agregado Succession con revisión de direcciones afectadas
+  - name: TradeLocations
+    description: Lugares UN/LOCODE y lugares propios ORG-SITE (son GeoPlace)
+  - name: PostalZones
+    description: Agregado PostalZone con relación M:N a lugares
+  - name: Imports
+    description: Agregado ImportBatch en tres capas (aterrizaje, diferencias, canónico)
+  - name: Catalogs
+    description: Esquemas de código y fuentes con su licencia
+
+paths:
+  /geo/countries:
+    get:
+      tags: [Countries]
+      operationId: listCountries
+      summary: CO-01 Lista completa de países (L)
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/PlaceStatus' }
+        - name: search
+          in: query
+          description: Nombre normalizado o código ISO; no se registra en logs.
+          schema: { type: string, maxLength: 100 }
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Todos los países, sin paginar.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CountryList' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Countries]
+      operationId: registerCountry
+      summary: CO-02 Alta de un país con sus tres códigos ISO 3166-1 (A)
+      description: Crea el lugar de tipo Country; no exige If-Match. Evento GeoPlaceEvent (Created).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterCountryRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/countries/{countryCode}:
+    parameters:
+      - $ref: '#/components/parameters/CountryCodePath'
+    get:
+      tags: [Countries]
+      operationId: getCountry
+      summary: CO-03 Ficha del país (L)
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: País con códigos y resumen de su escalera.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Country' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    put:
+      tags: [Countries]
+      operationId: updateCountry
+      summary: CO-04 Cambia officialName y englishName (A)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCountryRequest' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/countries/{countryCode}/territorial-schema:
+    parameters:
+      - $ref: '#/components/parameters/CountryCodePath'
+    get:
+      tags: [Countries]
+      operationId: getTerritorialSchema
+      summary: CO-05 Escalera de niveles y política postal (L)
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Política territorial del país.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TerritorialSchema' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    put:
+      tags: [Countries]
+      operationId: putTerritorialSchema
+      summary: CO-06 Declara o cambia la escalera y la política postal (A)
+      description: If-None-Match * declara (201); If-Match cambia (204). Sin ninguna → 428. Evento CountryTerritorialSchemaChanged.
+      parameters:
+        - $ref: '#/components/parameters/IfMatchOptional'
+        - $ref: '#/components/parameters/IfNoneMatchCreate'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TerritorialSchemaInput' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places:
+    get:
+      tags: [Places]
+      operationId: searchPlaces
+      summary: PL-01 Búsqueda de lugares (L)
+      parameters:
+        - name: name
+          in: query
+          description: Texto normalizado (sin tildes ni mayúsculas) sobre todos los nombres vigentes. No se registra en logs.
+          schema: { type: string, minLength: 2, maxLength: 100 }
+        - name: nameMatch
+          in: query
+          description: contains exige countryCode o parentId (400 validation.search_too_broad).
+          schema:
+            type: string
+            enum: [prefix, contains]
+            default: prefix
+        - name: scheme
+          in: query
+          schema: { $ref: '#/components/schemas/SchemeCode' }
+        - name: code
+          in: query
+          schema: { $ref: '#/components/schemas/CodeValue' }
+        - name: pathPrefix
+          in: query
+          schema: { type: string, maxLength: 400, examples: [PE/15/] }
+        - name: parentId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: countryCode
+          in: query
+          schema: { $ref: '#/components/schemas/CountryCode' }
+        - name: type
+          in: query
+          schema: { $ref: '#/components/schemas/PlaceType' }
+        - name: level
+          in: query
+          description: Solo con countryCode.
+          schema: { type: integer, minimum: 0, maximum: 6 }
+        - name: status
+          in: query
+          description: Repetible. Ausente, Active e Inactive.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/PlaceStatus' }
+        - name: usableForAddresses
+          in: query
+          schema: { type: boolean, default: false }
+        - $ref: '#/components/parameters/AsOf'
+        - name: view
+          in: query
+          schema:
+            type: string
+            enum: [minimal, path]
+            default: minimal
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [name, path, updatedAt]
+            default: name
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Página de lugares con su ruta legible.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlacePage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Places]
+      operationId: registerPlace
+      summary: PL-03 Alta de una división administrativa (M)
+      description: Lee el padre sin escribirlo; no exige If-Match. Evento GeoPlaceEvent (Created).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterPlaceRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places/resolve:
+    get:
+      tags: [Places]
+      operationId: resolvePlaceByCode
+      summary: PL-02 Resuelve un código exacto a un lugar (L)
+      description: Encuentra códigos vencidos y lugares inactivos o históricos; devuelve los sucesores. Sin scheme y con varios esquemas → 409 geo.code.ambiguous.
+      parameters:
+        - name: value
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/CodeValue' }
+        - name: scheme
+          in: query
+          schema: { $ref: '#/components/schemas/SchemeCode' }
+        - $ref: '#/components/parameters/AsOf'
+        - $ref: '#/components/parameters/View'
+      responses:
+        '200':
+          description: Lugar resuelto con el detalle de la resolución.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlaceResolution' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places/{placeId}:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+    get:
+      tags: [Places]
+      operationId: getPlace
+      summary: PL-04 Ficha del lugar con vista minimal, path o full (L)
+      parameters:
+        - $ref: '#/components/parameters/View'
+        - $ref: '#/components/parameters/AsOf'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Lugar.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Place' }
+              example:
+                id: 3f2b6c1e-0a4d-4e8b-9c71-5d2a8e150101
+                type: AdministrativeDivision
+                status: Active
+                countryCode: PE
+                level: 3
+                levelLabel: Distrito
+                officialName: Lima
+                canonicalCode: { schemeCode: UBIGEO-INEI, value: '150101' }
+                parentId: 3f2b6c1e-0a4d-4e8b-9c71-5d2a8e6f1501
+                path: PE/15/1501/150101
+                displayPath: Lima › Lima › Lima › Perú
+                ancestors:
+                  - { id: 3f2b6c1e-0a4d-4e8b-9c71-5d2a8e6f1b01, type: Country, level: 0, officialName: Perú, canonicalCode: { schemeCode: ISO-3166-1-A2, value: PE } }
+                  - { id: 3f2b6c1e-0a4d-4e8b-9c71-5d2a8e6f1b15, type: AdministrativeDivision, level: 1, officialName: Lima, canonicalCode: { schemeCode: UBIGEO-INEI, value: '15' } }
+                  - { id: 3f2b6c1e-0a4d-4e8b-9c71-5d2a8e6f1501, type: AdministrativeDivision, level: 2, officialName: Lima, canonicalCode: { schemeCode: UBIGEO-INEI, value: '1501' } }
+                validFrom: '1821-01-01'
+                validTo: null
+                isCurrent: true
+                version: 3
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places/{placeId}/official-name:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+    put:
+      tags: [Places]
+      operationId: correctOfficialName
+      summary: PL-05 Corrige el nombre oficial en un idioma (M)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CorrectOfficialNameRequest' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places/{placeId}/names:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+    get:
+      tags: [Places]
+      operationId: listPlaceNames
+      summary: PL-06 Nombres del lugar (L)
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Nombres oficiales, alternativos e históricos.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlaceNameList' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Places]
+      operationId: addPlaceName
+      summary: PL-07 Añade un nombre no oficial (M)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddNameRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places/{placeId}/names/{nameId}/expire:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+      - $ref: '#/components/parameters/NameId'
+    post:
+      tags: [Places]
+      operationId: expirePlaceName
+      summary: PL-08 Vence un nombre no oficial (M)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/OptionalExpire' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places/{placeId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+    post:
+      tags: [Places]
+      operationId: deactivatePlace
+      summary: PL-09 Desactiva un lugar (reversible) (M)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/OptionalReason' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places/{placeId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+    post:
+      tags: [Places]
+      operationId: reactivatePlace
+      summary: PL-10 Reactiva un lugar Inactive (M)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/OptionalReason' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places/{placeId}/history:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+    get:
+      tags: [Places]
+      operationId: getPlaceHistory
+      summary: PL-11 Histórico del lugar (L)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Bitácora de cambios y sucesiones en que participa.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HistoryPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places/{placeId}/move:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+    post:
+      tags: [Places]
+      operationId: movePlace
+      summary: PL-12 Reubica el padre para corregir un error de carga; solo hojas (A)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MovePlaceRequest' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places/{placeId}/geo-reference:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+    put:
+      tags: [Places]
+      operationId: putGeoReference
+      summary: PL-13 Fija o corrige el punto de referencia WGS 84 (M)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GeoReferenceInput' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places/{placeId}/codes:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+    get:
+      tags: [Codes]
+      operationId: listPlaceCodes
+      summary: CD-01 Códigos del lugar, vigentes y vencidos (L)
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Códigos con autoridad, fuente y licencia.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OfficialCodeList' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Codes]
+      operationId: addPlaceCode
+      summary: CD-02 Añade un código oficial (M)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddCodeRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/places/{placeId}/codes/{codeId}/expire:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+      - $ref: '#/components/parameters/CodeId'
+    post:
+      tags: [Codes]
+      operationId: expirePlaceCode
+      summary: CD-03 Vence un código (M; A si el esquema es canónico)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/OptionalExpire' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/code-correspondences:
+    get:
+      tags: [Correspondences]
+      operationId: listCorrespondences
+      summary: CR-01 Correspondencias entre códigos (L)
+      parameters:
+        - name: scheme
+          in: query
+          description: Junto con value, en cualquier extremo.
+          schema: { $ref: '#/components/schemas/SchemeCode' }
+        - name: value
+          in: query
+          schema: { $ref: '#/components/schemas/CodeValue' }
+        - name: kind
+          in: query
+          schema: { $ref: '#/components/schemas/CorrespondenceKind' }
+        - $ref: '#/components/parameters/CurrentOnly'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Página de correspondencias.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondencePage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Correspondences]
+      operationId: registerCorrespondence
+      summary: CR-02 Registra una correspondencia (M)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterCorrespondenceRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/code-correspondences/{correspondenceId}:
+    parameters:
+      - $ref: '#/components/parameters/CorrespondenceId'
+    get:
+      tags: [Correspondences]
+      operationId: getCorrespondence
+      summary: CR-03 Una correspondencia (L)
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Correspondencia.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Correspondence' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/code-correspondences/{correspondenceId}/expire:
+    parameters:
+      - $ref: '#/components/parameters/CorrespondenceId'
+    post:
+      tags: [Correspondences]
+      operationId: expireCorrespondence
+      summary: CR-04 Vence una correspondencia (M)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/OptionalExpire' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/successions:
+    get:
+      tags: [Successions]
+      operationId: listSuccessions
+      summary: SU-01 Sucesiones (L)
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/SuccessionStatus' }
+        - name: type
+          in: query
+          schema: { $ref: '#/components/schemas/SuccessionType' }
+        - name: placeId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: effectiveFrom
+          in: query
+          schema: { type: string, format: date }
+        - name: effectiveTo
+          in: query
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Página de sucesiones.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuccessionPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Successions]
+      operationId: proposeSuccession
+      summary: SU-02 Propone una sucesión territorial (M)
+      description: No cambia ningún lugar; bloquea sus participantes con geo.succession.pending_review hasta decidir.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProposeSuccessionRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/successions/{successionId}:
+    parameters:
+      - $ref: '#/components/parameters/SuccessionId'
+    get:
+      tags: [Successions]
+      operationId: getSuccession
+      summary: SU-03 Una sucesión con participantes y avance de aplicación (L)
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Sucesión.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Succession' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/successions/{successionId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/SuccessionId'
+    post:
+      tags: [Successions]
+      operationId: approveSuccession
+      summary: SU-04 Aprueba y devuelve las direcciones afectadas (A)
+      description: Escribe solo la sucesión; la aplicación a cada lugar es posterior, un lugar por transacción (ADR-0098).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/OptionalReason' }
+      responses:
+        '200':
+          description: Sucesión aprobada con la primera página de direcciones afectadas.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuccessionApprovalResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/successions/{successionId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/SuccessionId'
+    post:
+      tags: [Successions]
+      operationId: rejectSuccession
+      summary: SU-05 Rechaza con motivo (A)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/RequiredReason' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/successions/{successionId}/affected-addresses:
+    parameters:
+      - $ref: '#/components/parameters/SuccessionId'
+    get:
+      tags: [Successions]
+      operationId: listAffectedAddresses
+      summary: SU-06 Direcciones afectadas (L)
+      parameters:
+        - name: reviewStatus
+          in: query
+          schema: { $ref: '#/components/schemas/AddressReviewStatus' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Página de direcciones afectadas.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AffectedAddressPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/successions/{successionId}/affected-addresses/{reviewId}/resolve:
+    parameters:
+      - $ref: '#/components/parameters/SuccessionId'
+      - $ref: '#/components/parameters/ReviewId'
+    post:
+      tags: [Successions]
+      operationId: resolveAffectedAddress
+      summary: SU-07 Registra la decisión sobre una dirección afectada (A)
+      description: La dirección la cambia el maestro de partes con su propia versión (API-MDM-002 P-19).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResolveAffectedAddressRequest' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/trade-locations:
+    get:
+      tags: [TradeLocations]
+      operationId: searchTradeLocations
+      summary: TL-01 Búsqueda de lugares de comercio exterior (L)
+      parameters:
+        - name: countryCode
+          in: query
+          schema: { $ref: '#/components/schemas/CountryCode' }
+        - name: unLocode
+          in: query
+          description: Prefijo del UN/LOCODE. Restringido para clientes externos (403 geo.license.restricted).
+          schema: { type: string, pattern: '^[A-Z]{2}[A-Z2-9]{0,3}$' }
+        - name: name
+          in: query
+          schema: { type: string, minLength: 2, maxLength: 100 }
+        - name: function
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/TradeFunction' }
+        - name: uneceStatus
+          in: query
+          schema: { $ref: '#/components/schemas/UneceStatus' }
+        - name: usableInTradeDocuments
+          in: query
+          schema: { type: boolean }
+        - name: includeSites
+          in: query
+          schema: { type: boolean, default: false }
+        - $ref: '#/components/parameters/AsOf'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Página de lugares de comercio.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TradeLocationPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [TradeLocations]
+      operationId: registerTradeLocation
+      summary: TL-02 Alta de un lugar UN/LOCODE (M)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterTradeLocationRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/trade-locations/{placeId}:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+    get:
+      tags: [TradeLocations]
+      operationId: getTradeLocation
+      summary: TL-03 Ficha del lugar de comercio (L)
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Lugar de comercio con sus atributos UNECE.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TradeLocation' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/trade-locations/{placeId}/trade-attributes:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+    put:
+      tags: [TradeLocations]
+      operationId: updateTradeAttributes
+      summary: TL-04 Cambia funciones, estado UNECE e IATA (M)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTradeAttributesRequest' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/trade-locations/{placeId}/sites:
+    parameters:
+      - $ref: '#/components/parameters/PlaceId'
+    get:
+      tags: [TradeLocations]
+      operationId: listSites
+      summary: TL-06 Lugares propios contenidos (L)
+      responses:
+        '200':
+          description: Lugares ORG-SITE del lugar UN/LOCODE.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TradeLocationList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [TradeLocations]
+      operationId: registerSite
+      summary: TL-05 Alta de un lugar propio ORG-SITE (M)
+      description: Crea otro agregado; lee el padre sin escribirlo, por eso no exige If-Match.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterSiteRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/postal-zones:
+    get:
+      tags: [PostalZones]
+      operationId: listPostalZones
+      summary: PZ-01 Zonas postales (L)
+      parameters:
+        - name: countryCode
+          in: query
+          schema: { $ref: '#/components/schemas/CountryCode' }
+        - name: code
+          in: query
+          description: Prefijo del código postal.
+          schema: { type: string, maxLength: 20 }
+        - name: placeId
+          in: query
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/CurrentOnly'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Página de zonas postales.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostalZonePage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [PostalZones]
+      operationId: registerPostalZone
+      summary: PZ-02 Alta de una zona postal (M)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterPostalZoneRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/postal-zones/{postalZoneId}:
+    parameters:
+      - $ref: '#/components/parameters/PostalZoneId'
+    get:
+      tags: [PostalZones]
+      operationId: getPostalZone
+      summary: PZ-03 Una zona postal con sus lugares (L)
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Zona postal.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostalZone' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/postal-zones/{postalZoneId}/places:
+    parameters:
+      - $ref: '#/components/parameters/PostalZoneId'
+    put:
+      tags: [PostalZones]
+      operationId: replacePostalZonePlaces
+      summary: PZ-04 Reemplaza el conjunto de lugares de la zona (M)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReplacePostalZonePlacesRequest' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/postal-zones/{postalZoneId}/expire:
+    parameters:
+      - $ref: '#/components/parameters/PostalZoneId'
+    post:
+      tags: [PostalZones]
+      operationId: expirePostalZone
+      summary: PZ-05 Vence la zona postal (M)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/OptionalExpire' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/imports:
+    get:
+      tags: [Imports]
+      operationId: listImports
+      summary: IM-01 Lotes de importación (L)
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ImportStatus' }
+        - name: sourceCode
+          in: query
+          schema: { $ref: '#/components/schemas/SourceCode' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Página de lotes.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportBatchPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Imports]
+      operationId: uploadImport
+      summary: IM-02 Sube un archivo de una fuente oficial (M)
+      description: Queda en aterrizaje; las diferencias se calculan en segundo plano (Received → Parsing → ReadyForReview).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/ImportUploadForm' }
+            encoding:
+              metadata:
+                contentType: application/json
+      responses:
+        '202':
+          description: Lote recibido.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportAccepted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/imports/{importId}:
+    parameters:
+      - $ref: '#/components/parameters/ImportId'
+    get:
+      tags: [Imports]
+      operationId: getImport
+      summary: IM-03 Estado y recuentos del lote (L)
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Lote.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportBatch' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/imports/{importId}/diffs:
+    parameters:
+      - $ref: '#/components/parameters/ImportId'
+    get:
+      tags: [Imports]
+      operationId: listImportDiffs
+      summary: IM-04 Diferencias del lote (L)
+      parameters:
+        - name: kind
+          in: query
+          schema: { $ref: '#/components/schemas/DiffKind' }
+        - name: requiresDecision
+          in: query
+          schema: { type: boolean }
+        - name: decision
+          in: query
+          schema: { $ref: '#/components/schemas/DiffDecision' }
+        - name: applyStatus
+          in: query
+          schema: { $ref: '#/components/schemas/DiffApplyStatus' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Página de diferencias.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportDiffPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/imports/{importId}/diff-decisions:
+    parameters:
+      - $ref: '#/components/parameters/ImportId'
+    post:
+      tags: [Imports]
+      operationId: decideImportDiffs
+      summary: IM-05 Decide en bloque Accept o Exclude por diferencia (A)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DiffDecisionsRequest' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/imports/{importId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/ImportId'
+    post:
+      tags: [Imports]
+      operationId: approveImport
+      summary: IM-06 Aprueba el lote; la aplicación sigue en segundo plano (A)
+      description: Exige todas las diferencias con requiresDecision decididas (409 geo.import.not_reviewed) y canónico sin cambios (409 geo.import.stale).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/OptionalReason' }
+      responses:
+        '202':
+          description: Lote aprobado; pasa a Applying.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/imports/{importId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/ImportId'
+    post:
+      tags: [Imports]
+      operationId: rejectImport
+      summary: IM-07 Rechaza el lote con motivo (A)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/RequiredReason' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/code-schemes:
+    get:
+      tags: [Catalogs]
+      operationId: listCodeSchemes
+      summary: SC-01 Esquemas de código (L)
+      parameters:
+        - name: countryCode
+          in: query
+          schema: { $ref: '#/components/schemas/CountryCode' }
+        - name: appliesTo
+          in: query
+          schema: { $ref: '#/components/schemas/PlaceType' }
+        - $ref: '#/components/parameters/IncludeInactive'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Lista completa de esquemas.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CodeSchemeList' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Catalogs]
+      operationId: registerCodeScheme
+      summary: SC-02 Alta de un esquema de código (A)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterCodeSchemeRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/code-schemes/{schemeCode}:
+    parameters:
+      - $ref: '#/components/parameters/SchemeCodePath'
+    get:
+      tags: [Catalogs]
+      operationId: getCodeScheme
+      summary: SC-03 Un esquema de código (L)
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Esquema.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CodeScheme' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    put:
+      tags: [Catalogs]
+      operationId: updateCodeScheme
+      summary: SC-04 Cambia un esquema; el patrón solo si no tiene códigos (A)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CodeSchemeInput' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/code-schemes/{schemeCode}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/SchemeCodePath'
+    post:
+      tags: [Catalogs]
+      operationId: deactivateCodeScheme
+      summary: SC-05 Desactiva un esquema (A)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/OptionalReason' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/code-schemes/{schemeCode}/activate:
+    parameters:
+      - $ref: '#/components/parameters/SchemeCodePath'
+    post:
+      tags: [Catalogs]
+      operationId: activateCodeScheme
+      summary: SC-06 Reactiva un esquema (A)
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/OptionalReason' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/sources:
+    get:
+      tags: [Catalogs]
+      operationId: listSources
+      summary: SL-01 Fuentes con su licencia (L)
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Lista completa de fuentes.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceList' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Catalogs]
+      operationId: registerSource
+      summary: SL-02 Registra una fuente; nace InternalOnly (A)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterSourceRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/sources/{sourceCode}:
+    parameters:
+      - $ref: '#/components/parameters/SourceCodePath'
+    get:
+      tags: [Catalogs]
+      operationId: getSource
+      summary: SL-03 Una fuente (L)
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Fuente.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Source' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /geo/sources/{sourceCode}/license:
+    parameters:
+      - $ref: '#/components/parameters/SourceCodePath'
+    put:
+      tags: [Catalogs]
+      operationId: updateSourceLicense
+      summary: SL-04 Cambia la licencia de una fuente (A)
+      description: Pasar a redistribuible exige confirmedOn y evidenceRef (422 geo.source.evidence_required).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateLicenseRequest' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/UnprocessableContent' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+components:
+  securitySchemes:
+    umsBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Portador JWT RS256 emitido por UMS y validado contra su JWKS (ADR-0157). Permisos geo.read, geo.maintain y geo.approve supuestos (G-622).
+
+  headers:
+    ETag:
+      description: Versión entera fuerte del agregado dueño, entre comillas.
+      schema: { type: string, pattern: '^"[1-9][0-9]*"$' }
+      example: '"3"'
+    Location:
+      description: URL del recurso creado o del lote.
+      schema: { type: string, format: uri-reference }
+
+  parameters:
+    PlaceId:
+      name: placeId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CountryCodePath:
+      name: countryCode
+      in: path
+      required: true
+      description: ISO 3166-1 alfa-2, vigente o vencido.
+      schema: { $ref: '#/components/schemas/CountryCode' }
+    CodeId:
+      name: codeId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    NameId:
+      name: nameId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CorrespondenceId:
+      name: correspondenceId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SuccessionId:
+      name: successionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ReviewId:
+      name: reviewId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PostalZoneId:
+      name: postalZoneId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ImportId:
+      name: importId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SchemeCodePath:
+      name: schemeCode
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/SchemeCode' }
+    SourceCodePath:
+      name: sourceCode
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/SourceCode' }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: ETag vigente del agregado dueño. Ausente, vacío o * → 428; mal formado → 400; distinto → 412.
+      schema: { type: string, pattern: '^"[1-9][0-9]*"$' }
+      example: '"3"'
+    IfMatchOptional:
+      name: If-Match
+      in: header
+      required: false
+      description: Para cambiar una escalera ya declarada. Excluyente con If-None-Match; sin ninguna de las dos → 428.
+      schema: { type: string, pattern: '^"[1-9][0-9]*"$' }
+    IfNoneMatchCreate:
+      name: If-None-Match
+      in: header
+      required: false
+      description: Solo `*`, para declarar la escalera por primera vez; si ya existe → 412.
+      schema: { type: string, enum: ['*'] }
+    IfNoneMatch:
+      name: If-None-Match
+      in: header
+      required: false
+      description: Si coincide con el ETag (comparación débil) o es *, responde 304.
+      schema: { type: string }
+    AsOf:
+      name: asOf
+      in: query
+      description: Catálogo tal como era ese día (America/Lima). Ausente, hoy.
+      schema: { type: string, format: date }
+    View:
+      name: view
+      in: query
+      schema: { $ref: '#/components/schemas/PlaceView' }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, format: int32, minimum: 1, default: 1 }
+    PageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, format: int32, minimum: 1, maximum: 100, default: 20 }
+    SortOrder:
+      name: sortOrder
+      in: query
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: asc
+    IncludeInactive:
+      name: includeInactive
+      in: query
+      schema: { type: boolean, default: false }
+    CurrentOnly:
+      name: currentOnly
+      in: query
+      schema: { type: boolean, default: true }
+
+  requestBodies:
+    OptionalReason:
+      required: false
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ReasonRequest' }
+    RequiredReason:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/RequiredReasonRequest' }
+    OptionalExpire:
+      required: false
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ExpireRequest' }
+
+  responses:
+    Created:
+      description: Recurso creado. Cuerpo con el id creado y la versión del agregado dueño.
+      headers:
+        Location: { $ref: '#/components/headers/Location' }
+        ETag: { $ref: '#/components/headers/ETag' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/CreatedResponse' }
+    NoContent:
+      description: Escritura correcta; devuelve el ETag nuevo.
+      headers:
+        ETag: { $ref: '#/components/headers/ETag' }
+    NotModified:
+      description: If-None-Match coincide; sin cuerpo.
+      headers:
+        ETag: { $ref: '#/components/headers/ETag' }
+    BadRequest:
+      description: validation.failed (con errors), validation.search_too_broad o request.malformed.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+          example:
+            type: https://httpwg.org/specs/rfc9110.html#status.400
+            title: La petición no es válida
+            status: 400
+            detail: Revisa el campo indicado.
+            instance: /api/v1/geo/places
+            code: validation.failed
+            errors:
+              officialName: [validation.official_name_required]
+    Unauthorized:
+      description: auth.unauthenticated o auth.user_required.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Forbidden:
+      description: auth.forbidden (sin el permiso) o geo.license.restricted (licencia InternalOnly para un cliente externo).
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ProblemDetails'
+              - type: object
+                properties:
+                  code: { $ref: '#/components/schemas/ForbiddenCode' }
+          example:
+            type: https://httpwg.org/specs/rfc9110.html#status.403
+            title: Dato de uso interno
+            status: 403
+            detail: La licencia de UN/LOCODE no permite entregar este dato fuera de la suite.
+            instance: /api/v1/geo/trade-locations
+            code: geo.license.restricted
+    NotFound:
+      description: common.not_found (el recurso de la ruta no existe) o geo.country.schema_not_declared en CO-05.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Conflict:
+      description: Conflicto con el estado o con la unicidad.
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ProblemDetails'
+              - type: object
+                properties:
+                  code: { $ref: '#/components/schemas/ConflictCode' }
+          example:
+            type: https://httpwg.org/specs/rfc9110.html#status.409
+            title: El código ya pertenece a otro lugar
+            status: 409
+            detail: UBIGEO-INEI 150101 ya está asignado y no se reutiliza.
+            instance: /api/v1/geo/places
+            code: geo.code.duplicate
+    UnprocessableContent:
+      description: Valor que el catálogo o una regla sin estado no admite.
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ProblemDetails'
+              - type: object
+                properties:
+                  code: { $ref: '#/components/schemas/UnprocessableCode' }
+          example:
+            type: https://httpwg.org/specs/rfc9110.html#status.422
+            title: El padre no es del nivel anterior
+            status: 422
+            detail: Un Distrito (nivel 3) del Perú debe colgar de una Provincia (nivel 2).
+            instance: /api/v1/geo/places
+            code: geo.place.parent_level_invalid
+    PreconditionFailed:
+      description: precondition.failed; la versión cambió o la escalera ya estaba declarada.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    PreconditionRequired:
+      description: precondition.required; falta If-Match.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    PayloadTooLarge:
+      description: request.payload_too_large; el archivo supera el máximo propuesto (50 MB).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    UnsupportedMediaType:
+      description: request.unsupported_media_type.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    InternalError:
+      description: server.unexpected_error.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+
+  schemas:
+    # --- Primitivos ---
+    Version:
+      type: integer
+      format: int64
+      minimum: 1
+      description: Versión del agregado; igual al ETag sin comillas y a la sequence del evento.
+    CountryCode:
+      type: string
+      description: ISO 3166-1 alfa-2.
+      pattern: '^[A-Z]{2}$'
+      minLength: 2
+      maxLength: 2
+      examples: [PE]
+    SchemeCode:
+      type: string
+      description: Código del esquema de código oficial; inmutable.
+      pattern: '^[A-Z][A-Z0-9-]{1,29}$'
+      minLength: 2
+      maxLength: 30
+      examples: [UBIGEO-INEI]
+    SourceCode:
+      type: string
+      description: Código de la fuente registrada.
+      pattern: '^[A-Z][A-Z0-9_]{1,19}$'
+      minLength: 2
+      maxLength: 20
+      examples: [INEI]
+    CodeValue:
+      type: string
+      description: Valor normalizado (recorte, mayúsculas, sin espacios internos) y conforme al valuePattern del esquema.
+      minLength: 1
+      maxLength: 35
+      examples: ['150101']
+    PlaceName:
+      type: string
+      minLength: 1
+      maxLength: 200
+    LanguageCode:
+      type: string
+      description: Etiqueta BCP 47 corta.
+      pattern: '^[a-z]{2,3}(-[A-Z]{2})?$'
+      maxLength: 8
+      examples: [es]
+    PlacePath:
+      type: string
+      description: Ruta materializada con el segmento de cada antepasado (código canónico al dar de alta, inmutable).
+      pattern: '^[A-Z0-9-]+(/[A-Z0-9-]+)*$'
+      maxLength: 400
+      examples: [PE/15/1501/150101]
+    Reason:
+      type: string
+      maxLength: 500
+    Actor:
+      type: string
+      description: Claim sub del portador.
+      maxLength: 200
+    Instant:
+      type: string
+      format: date-time
+      description: ISO 8601 con milisegundos y desfase.
+    Sha256:
+      type: string
+      pattern: '^[0-9a-f]{64}$'
+
+    # --- Enumeraciones ---
+    PlaceType:
+      type: string
+      enum: [Country, AdministrativeDivision, Locality, TradeLocation]
+    PlaceStatus:
+      type: string
+      description: Inactive es propuesta del contrato (RF-GEO-007, G-621). Historical solo por sucesión.
+      enum: [Active, Inactive, Historical]
+    PlaceView:
+      type: string
+      enum: [minimal, path, full]
+      default: path
+    CanonicalLabel:
+      type: string
+      enum: [ADM1, ADM2, ADM3, ADM4, ADM5, ADM6]
+    NameKind:
+      type: string
+      enum: [Official, Alternative, InternationalTrade, Transliterated, Short, Historical]
+    AddableNameKind:
+      type: string
+      enum: [Alternative, InternationalTrade, Transliterated, Short]
+    PrefixRule:
+      type: string
+      enum: [None, CountryAlpha2, ParentValue]
+    CorrespondenceKind:
+      type: string
+      enum: [Equivalent, PartOf, Overlaps]
+    SuccessionType:
+      type: string
+      enum: [Creation, Split, Merge, Rename, Recoding, Reassignment]
+    SuccessionStatus:
+      type: string
+      enum: [Proposed, Approved, Applied, Rejected]
+    ParticipantRole:
+      type: string
+      enum: [Predecessor, Successor, Subject]
+    AddressOwnerType:
+      type: string
+      enum: [Establishment, PartyAddress]
+    AddressReviewStatus:
+      type: string
+      enum: [Pending, Reassigned, Kept]
+    AddressReviewDecision:
+      type: string
+      enum: [Reassign, Keep]
+    TradeFunction:
+      type: string
+      description: 'Dígito UNECE: SEAPORT 1, RAIL 2, ROAD 3, AIRPORT 4, POSTAL 5, MULTIMODAL 6, FIXED_TRANSPORT 7, INLAND_WATERWAY 8, SPECIAL_ECONOMIC_ZONE A, NOT_OFFICIAL 0, BORDER_CROSSING B (legado, no asignable a mano).'
+      enum: [SEAPORT, RAIL, ROAD, AIRPORT, POSTAL, MULTIMODAL, FIXED_TRANSPORT, INLAND_WATERWAY, SPECIAL_ECONOMIC_ZONE, NOT_OFFICIAL, BORDER_CROSSING]
+    UneceStatus:
+      type: string
+      description: Estado UNECE. Utilizables en documentos (supuesto, G-628) AM, RL, AA, AC, AF, AI, AS, AQ; nunca RQ, RN, XX.
+      enum: [AM, RL, RQ, XX, AA, AC, AF, AI, AS, AQ, RN]
+    SiteKind:
+      type: string
+      enum: [Terminal, TemporaryWarehouse, ContainerYard, Plant, Other]
+    GeoPrecision:
+      type: string
+      enum: [Exact, Address, Locality, Area]
+    Redistribution:
+      type: string
+      enum: [InternalOnly, Redistributable, RedistributableWithAttribution]
+    ImportStatus:
+      type: string
+      enum: [Received, Parsing, ReadyForReview, Failed, Approved, Applying, Applied, AppliedWithErrors, Rejected]
+    ImportFormat:
+      type: string
+      description: Propuesta hasta conocer los archivos reales (G-627).
+      enum: [UNLOCODE_CSV, ISO3166_CSV, UBIGEO_INEI_CSV, UBIGEO_RENIEC_CSV, UBIGEO_SUNAT_CSV, POSTAL_CSV]
+    DiffKind:
+      type: string
+      enum: [Added, Changed, Removed, SuccessionProposed, Error]
+    DiffDecision:
+      type: string
+      enum: [Accept, Exclude]
+    DiffApplyStatus:
+      type: string
+      enum: [Pending, Applied, Failed, Skipped]
+
+    # --- Errores ---
+    ProblemDetails:
+      type: object
+      description: RFC 9457 con la extensión code.
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer, format: int32 }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+        code:
+          type: string
+          description: Código estable de negocio o transversal.
+          examples: [validation.failed, precondition.required, geo.code.duplicate]
+        errors:
+          type: object
+          description: Solo en validation.failed; un único campo con la lista de códigos validation.*.
+          additionalProperties:
+            type: array
+            items: { type: string }
+    ForbiddenCode:
+      type: string
+      enum: [auth.forbidden, geo.license.restricted]
+    ConflictCode:
+      type: string
+      enum:
+        - geo.place.historical
+        - geo.place.parent_inactive
+        - geo.place.already_active
+        - geo.place.already_inactive
+        - geo.place.has_children
+        - geo.country.schema_not_declared
+        - geo.country.level_in_use
+        - geo.scheme.code_duplicate
+        - geo.scheme.in_use
+        - geo.scheme.already_active
+        - geo.scheme.already_inactive
+        - geo.code.duplicate
+        - geo.code.current_exists
+        - geo.code.canonical_required
+        - geo.code.already_expired
+        - geo.code.ambiguous
+        - geo.name.duplicate
+        - geo.name.already_expired
+        - geo.name.official_not_expirable
+        - geo.correspondence.duplicate
+        - geo.correspondence.already_expired
+        - geo.succession.pending_review
+        - geo.succession.successor_not_active
+        - geo.succession.already_decided
+        - geo.address_review.already_resolved
+        - geo.postal_zone.code_duplicate
+        - geo.postal_zone.already_expired
+        - geo.source.code_duplicate
+        - geo.import.duplicate_file
+        - geo.import.not_ready
+        - geo.import.not_reviewed
+        - geo.import.stale
+        - geo.import.already_decided
+    UnprocessableCode:
+      type: string
+      enum:
+        - geo.place.parent_not_found
+        - geo.place.parent_level_invalid
+        - geo.place.type_not_supported
+        - geo.place.cycle
+        - geo.country.level_order_invalid
+        - geo.scheme.unknown
+        - geo.scheme.not_applicable
+        - geo.scheme.code_invalid
+        - geo.code.invalid_format
+        - geo.code.country_mismatch
+        - geo.code.hierarchy_mismatch
+        - geo.correspondence.code_unknown
+        - geo.correspondence.self_reference
+        - geo.succession.participants_invalid
+        - geo.address_review.target_invalid
+        - geo.trade_location.function_deprecated
+        - geo.trade_location.not_trade_location
+        - geo.postal_zone.not_used_by_country
+        - geo.postal_zone.invalid_format
+        - geo.postal_zone.place_country_mismatch
+        - geo.source.unknown
+        - geo.source.evidence_required
+        - geo.import.file_unsupported
+        - geo.import.diff_not_found
+
+    # --- Comunes ---
+    CreatedResponse:
+      type: object
+      required: [id, version]
+      properties:
+        id: { type: string, format: uuid }
+        version: { $ref: '#/components/schemas/Version' }
+      example: { id: 3f2b6c1e-0a4d-4e8b-9c71-5d2a8e150101, version: 1 }
+    ReasonRequest:
+      type: object
+      properties:
+        reason: { $ref: '#/components/schemas/Reason' }
+    RequiredReasonRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    ExpireRequest:
+      type: object
+      properties:
+        validTo:
+          type: string
+          format: date
+          description: Por defecto, hoy. Debe ser ≥ validFrom.
+        reason: { $ref: '#/components/schemas/Reason' }
+    CodeRef:
+      type: object
+      required: [schemeCode, value]
+      properties:
+        schemeCode: { $ref: '#/components/schemas/SchemeCode' }
+        value: { $ref: '#/components/schemas/CodeValue' }
+    SourceRef:
+      type: object
+      required: [code]
+      properties:
+        code: { $ref: '#/components/schemas/SourceCode' }
+        version:
+          type: [string, 'null']
+          maxLength: 50
+    LicenseInfo:
+      type: object
+      required: [redistribution]
+      properties:
+        redistribution: { $ref: '#/components/schemas/Redistribution' }
+        attributionText:
+          type: [string, 'null']
+          maxLength: 500
+    Audit:
+      type: object
+      properties:
+        createdAt: { $ref: '#/components/schemas/Instant' }
+        createdBy: { $ref: '#/components/schemas/Actor' }
+        updatedAt: { $ref: '#/components/schemas/Instant' }
+        updatedBy: { $ref: '#/components/schemas/Actor' }
+    PagingFields:
+      type: object
+      required: [page, pageSize, totalCount, totalPages]
+      properties:
+        page: { type: integer, format: int32, minimum: 1 }
+        pageSize: { type: integer, format: int32, minimum: 1, maximum: 100 }
+        totalCount: { type: integer, format: int64, minimum: 0 }
+        totalPages: { type: integer, format: int32, minimum: 0 }
+
+    # --- Lugares ---
+    PlaceRef:
+      type: object
+      description: Vista mínima de un antepasado, sucesor o lugar asociado.
+      required: [id, type, officialName]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: '#/components/schemas/PlaceType' }
+        level:
+          type: [integer, 'null']
+          minimum: 0
+          maximum: 6
+        officialName: { $ref: '#/components/schemas/PlaceName' }
+        canonicalCode:
+          oneOf:
+            - $ref: '#/components/schemas/CodeRef'
+            - type: 'null'
+        status: { $ref: '#/components/schemas/PlaceStatus' }
+    GeoReference:
+      type: object
+      required: [latitude, longitude, precision, source]
+      properties:
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        precision: { $ref: '#/components/schemas/GeoPrecision' }
+        isProposed:
+          type: boolean
+          default: false
+          description: Reservado para la geocodificación de la etapa posterior; hoy siempre false.
+        source: { $ref: '#/components/schemas/SourceRef' }
+        license: { $ref: '#/components/schemas/LicenseInfo' }
+    GeoReferenceInput:
+      type: object
+      required: [latitude, longitude, precision, sourceCode]
+      properties:
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        precision: { $ref: '#/components/schemas/GeoPrecision' }
+        sourceCode: { $ref: '#/components/schemas/SourceCode' }
+        sourceVersion: { type: string, maxLength: 50 }
+    PlaceNameItem:
+      type: object
+      required: [nameId, name, languageCode, kind, isPreferred, validFrom, isCurrent]
+      properties:
+        nameId: { type: string, format: uuid }
+        name: { $ref: '#/components/schemas/PlaceName' }
+        languageCode: { $ref: '#/components/schemas/LanguageCode' }
+        kind: { $ref: '#/components/schemas/NameKind' }
+        isPreferred: { type: boolean }
+        validFrom: { type: string, format: date }
+        validTo: { type: [string, 'null'], format: date }
+        isCurrent: { type: boolean }
+        source: { $ref: '#/components/schemas/SourceRef' }
+        license: { $ref: '#/components/schemas/LicenseInfo' }
+    PlaceNameList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/PlaceNameItem' }
+    OfficialCode:
+      type: object
+      required: [codeId, schemeCode, value, authority, isCanonical, validFrom, isCurrent]
+      properties:
+        codeId: { type: string, format: uuid }
+        schemeCode: { $ref: '#/components/schemas/SchemeCode' }
+        value: { $ref: '#/components/schemas/CodeValue' }
+        authority: { type: string, maxLength: 100 }
+        isCanonical: { type: boolean }
+        validFrom: { type: string, format: date }
+        validTo: { type: [string, 'null'], format: date }
+        isCurrent: { type: boolean }
+        source: { $ref: '#/components/schemas/SourceRef' }
+        license: { $ref: '#/components/schemas/LicenseInfo' }
+        importId: { type: [string, 'null'], format: uuid }
+    OfficialCodeList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OfficialCode' }
+    TradeLocationInfo:
+      type: object
+      required: [functions, usableInTradeDocuments]
+      properties:
+        unLocode:
+          type: [string, 'null']
+          pattern: '^[A-Z]{2}[A-Z2-9]{3}$'
+          description: Nulo en un lugar propio ORG-SITE.
+        siteCode:
+          type: [string, 'null']
+          pattern: '^[A-Z]{2}[A-Z2-9]{3}-[A-Z0-9]{1,10}$'
+        siteKind:
+          oneOf:
+            - $ref: '#/components/schemas/SiteKind'
+            - type: 'null'
+        functions:
+          type: array
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/TradeFunction' }
+        uneceStatus:
+          oneOf:
+            - $ref: '#/components/schemas/UneceStatus'
+            - type: 'null'
+        uneceStatusDate: { type: [string, 'null'], format: date }
+        iataCode:
+          type: [string, 'null']
+          pattern: '^[A-Z]{3}$'
+        usableInTradeDocuments:
+          type: boolean
+          description: Derivado (RN-GEO-08); los lugares propios heredan el de su padre.
+        siteCount: { type: integer, minimum: 0 }
+    SuccessionRef:
+      type: object
+      required: [successionId, type, status, role, effectiveOn]
+      properties:
+        successionId: { type: string, format: uuid }
+        type: { $ref: '#/components/schemas/SuccessionType' }
+        status: { $ref: '#/components/schemas/SuccessionStatus' }
+        role: { $ref: '#/components/schemas/ParticipantRole' }
+        effectiveOn: { type: string, format: date }
+    Place:
+      description: Ficha de lugar. minimal trae los campos obligatorios; path añade la jerarquía; full, el resto.
+      allOf:
+        - type: object
+          required: [id, type, status, countryCode, officialName, version]
+          properties:
+            id: { type: string, format: uuid }
+            type: { $ref: '#/components/schemas/PlaceType' }
+            status: { $ref: '#/components/schemas/PlaceStatus' }
+            countryCode: { $ref: '#/components/schemas/CountryCode' }
+            level:
+              type: [integer, 'null']
+              minimum: 0
+              maximum: 6
+              description: 0 = país; nulo en lugares de comercio.
+            levelLabel: { type: [string, 'null'], maxLength: 100 }
+            officialName: { $ref: '#/components/schemas/PlaceName' }
+            canonicalCode:
+              oneOf:
+                - $ref: '#/components/schemas/CodeRef'
+                - type: 'null'
+            parentId: { type: [string, 'null'], format: uuid }
+            path: { $ref: '#/components/schemas/PlacePath' }
+            displayPath: { type: string, maxLength: 1000 }
+            ancestors:
+              type: array
+              items: { $ref: '#/components/schemas/PlaceRef' }
+            validFrom: { type: string, format: date }
+            validTo: { type: [string, 'null'], format: date }
+            isCurrent: { type: boolean }
+            names:
+              type: array
+              items: { $ref: '#/components/schemas/PlaceNameItem' }
+            codes:
+              type: array
+              items: { $ref: '#/components/schemas/OfficialCode' }
+            geoReference:
+              oneOf:
+                - $ref: '#/components/schemas/GeoReference'
+                - type: 'null'
+            tradeLocation:
+              oneOf:
+                - $ref: '#/components/schemas/TradeLocationInfo'
+                - type: 'null'
+            successions:
+              type: array
+              items: { $ref: '#/components/schemas/SuccessionRef' }
+            childCount: { type: integer, minimum: 0 }
+            license: { $ref: '#/components/schemas/LicenseInfo' }
+            redactedSchemes:
+              type: array
+              description: Esquemas omitidos por licencia para un cliente de distribución externa (G-623).
+              items: { $ref: '#/components/schemas/SchemeCode' }
+            version: { $ref: '#/components/schemas/Version' }
+        - $ref: '#/components/schemas/Audit'
+    PlaceSummary:
+      type: object
+      required: [id, type, status, countryCode, officialName, displayPath, version]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: '#/components/schemas/PlaceType' }
+        status: { $ref: '#/components/schemas/PlaceStatus' }
+        countryCode: { $ref: '#/components/schemas/CountryCode' }
+        level: { type: [integer, 'null'], minimum: 0, maximum: 6 }
+        officialName: { $ref: '#/components/schemas/PlaceName' }
+        matchedName:
+          type: [string, 'null']
+          maxLength: 200
+          description: Nombre alternativo que coincidió con la búsqueda, si no es el oficial.
+        canonicalCode:
+          oneOf:
+            - $ref: '#/components/schemas/CodeRef'
+            - type: 'null'
+        parentId: { type: [string, 'null'], format: uuid }
+        path: { $ref: '#/components/schemas/PlacePath' }
+        displayPath: { type: string, maxLength: 1000 }
+        redactedSchemes:
+          type: array
+          items: { $ref: '#/components/schemas/SchemeCode' }
+        version: { $ref: '#/components/schemas/Version' }
+    PlacePage:
+      allOf:
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/PlaceSummary' }
+        - $ref: '#/components/schemas/PagingFields'
+    PlaceResolution:
+      type: object
+      required: [place, resolution]
+      properties:
+        place: { $ref: '#/components/schemas/Place' }
+        resolution:
+          type: object
+          required: [matchedCode, placeStatus, successors]
+          properties:
+            matchedCode: { $ref: '#/components/schemas/OfficialCode' }
+            placeStatus: { $ref: '#/components/schemas/PlaceStatus' }
+            successors:
+              type: array
+              items: { $ref: '#/components/schemas/PlaceRef' }
+    RegisterPlaceRequest:
+      type: object
+      required: [type, parentId, canonicalCode, officialName, sourceCode]
+      properties:
+        type:
+          type: string
+          enum: [AdministrativeDivision, Locality]
+          description: Locality responde 422 geo.place.type_not_supported en la primera etapa.
+        parentId: { type: string, format: uuid }
+        canonicalCode: { $ref: '#/components/schemas/CodeRef' }
+        officialName: { $ref: '#/components/schemas/PlaceName' }
+        languageCode: { $ref: '#/components/schemas/LanguageCode' }
+        validFrom: { type: string, format: date }
+        sourceCode: { $ref: '#/components/schemas/SourceCode' }
+        sourceVersion: { type: string, maxLength: 50 }
+      example:
+        type: AdministrativeDivision
+        parentId: 3f2b6c1e-0a4d-4e8b-9c71-5d2a8e6f1501
+        canonicalCode: { schemeCode: UBIGEO-INEI, value: '150101' }
+        officialName: Lima
+        validFrom: '1821-01-01'
+        sourceCode: INEI
+        sourceVersion: Ubigeo INEI 2026
+    CorrectOfficialNameRequest:
+      type: object
+      required: [languageCode, officialName, reason]
+      properties:
+        languageCode: { $ref: '#/components/schemas/LanguageCode' }
+        officialName: { $ref: '#/components/schemas/PlaceName' }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    AddNameRequest:
+      type: object
+      required: [name, languageCode, kind, sourceCode]
+      properties:
+        name: { $ref: '#/components/schemas/PlaceName' }
+        languageCode: { $ref: '#/components/schemas/LanguageCode' }
+        kind: { $ref: '#/components/schemas/AddableNameKind' }
+        isPreferred: { type: boolean, default: false }
+        validFrom: { type: string, format: date }
+        sourceCode: { $ref: '#/components/schemas/SourceCode' }
+        sourceVersion: { type: string, maxLength: 50 }
+      example: { name: Cuzco, languageCode: es, kind: Alternative, isPreferred: false, sourceCode: ORG }
+    MovePlaceRequest:
+      type: object
+      required: [newParentId, reason]
+      properties:
+        newParentId: { type: string, format: uuid }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    AddCodeRequest:
+      type: object
+      required: [schemeCode, value, sourceCode]
+      properties:
+        schemeCode: { $ref: '#/components/schemas/SchemeCode' }
+        value: { $ref: '#/components/schemas/CodeValue' }
+        validFrom: { type: string, format: date }
+        sourceCode: { $ref: '#/components/schemas/SourceCode' }
+        sourceVersion: { type: string, maxLength: 50 }
+      example: { schemeCode: ISO-3166-2, value: PE-LMA, sourceCode: ISO, sourceVersion: OBP 2026-10-24 }
+    HistoryEntry:
+      type: object
+      required: [entryId, occurredAt, actor, action, placeVersion]
+      properties:
+        entryId: { type: string, format: uuid }
+        occurredAt: { $ref: '#/components/schemas/Instant' }
+        actor: { $ref: '#/components/schemas/Actor' }
+        action:
+          type: string
+          enum: [Created, Renamed, NamesChanged, CodesChanged, Deactivated, Reactivated, Moved, GeoReferenceChanged, TradeAttributesChanged, Succeeded]
+        placeVersion: { $ref: '#/components/schemas/Version' }
+        reason: { type: [string, 'null'], maxLength: 500 }
+        source:
+          oneOf:
+            - $ref: '#/components/schemas/SourceRef'
+            - type: 'null'
+        importId: { type: [string, 'null'], format: uuid }
+        successionId: { type: [string, 'null'], format: uuid }
+    HistoryPage:
+      allOf:
+        - type: object
+          required: [items, successions]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/HistoryEntry' }
+            successions:
+              type: array
+              items: { $ref: '#/components/schemas/SuccessionRef' }
+        - $ref: '#/components/schemas/PagingFields'
+
+    # --- Países ---
+    TerritorialSchemaSummary:
+      type: object
+      required: [declared, levelCount]
+      properties:
+        declared: { type: boolean }
+        levelCount: { type: integer, minimum: 0, maximum: 6 }
+        usesPostalCode: { type: [boolean, 'null'] }
+        version:
+          oneOf:
+            - $ref: '#/components/schemas/Version'
+            - type: 'null'
+    CountrySummary:
+      type: object
+      required: [placeId, alpha2, alpha3, numeric, officialName, status, version]
+      properties:
+        placeId: { type: string, format: uuid }
+        alpha2: { $ref: '#/components/schemas/CountryCode' }
+        alpha3: { type: string, pattern: '^[A-Z]{3}$' }
+        numeric: { type: string, pattern: '^[0-9]{3}$' }
+        officialName: { $ref: '#/components/schemas/PlaceName' }
+        englishName: { type: [string, 'null'], maxLength: 200 }
+        status: { $ref: '#/components/schemas/PlaceStatus' }
+        levelCount: { type: integer, minimum: 0, maximum: 6 }
+        version: { $ref: '#/components/schemas/Version' }
+    CountryList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CountrySummary' }
+      example:
+        items:
+          - placeId: 3f2b6c1e-0a4d-4e8b-9c71-5d2a8e6f1b01
+            alpha2: PE
+            alpha3: PER
+            numeric: '604'
+            officialName: Perú
+            englishName: Peru
+            status: Active
+            levelCount: 3
+            version: 2
+    Country:
+      allOf:
+        - $ref: '#/components/schemas/CountrySummary'
+        - type: object
+          required: [territorialSchema]
+          properties:
+            validFrom: { type: string, format: date }
+            validTo: { type: [string, 'null'], format: date }
+            codes:
+              type: array
+              items: { $ref: '#/components/schemas/OfficialCode' }
+            territorialSchema: { $ref: '#/components/schemas/TerritorialSchemaSummary' }
+        - $ref: '#/components/schemas/Audit'
+    RegisterCountryRequest:
+      type: object
+      required: [alpha2, alpha3, numeric, officialName, sourceCode]
+      properties:
+        alpha2: { $ref: '#/components/schemas/CountryCode' }
+        alpha3: { type: string, pattern: '^[A-Z]{3}$' }
+        numeric: { type: string, pattern: '^[0-9]{3}$' }
+        officialName: { $ref: '#/components/schemas/PlaceName' }
+        englishName: { type: string, minLength: 1, maxLength: 200 }
+        validFrom: { type: string, format: date }
+        sourceCode: { $ref: '#/components/schemas/SourceCode' }
+        sourceVersion: { type: string, maxLength: 50 }
+      example:
+        alpha2: PE
+        alpha3: PER
+        numeric: '604'
+        officialName: Perú
+        englishName: Peru
+        sourceCode: ISO
+        sourceVersion: OBP 2026-10-24
+    UpdateCountryRequest:
+      type: object
+      required: [officialName]
+      properties:
+        officialName: { $ref: '#/components/schemas/PlaceName' }
+        englishName: { type: [string, 'null'], maxLength: 200 }
+    TerritorialLevel:
+      type: object
+      required: [order, canonicalLabel, localLabel, canonicalSchemeCode, isAddressLevel]
+      properties:
+        order: { type: integer, minimum: 1, maximum: 6 }
+        canonicalLabel: { $ref: '#/components/schemas/CanonicalLabel' }
+        localLabel: { type: string, minLength: 1, maxLength: 100 }
+        canonicalSchemeCode: { $ref: '#/components/schemas/SchemeCode' }
+        isAddressLevel: { type: boolean }
+        placeCount:
+          type: integer
+          minimum: 0
+          readOnly: true
+    TerritorialSchemaInput:
+      type: object
+      required: [levels, usesPostalCode]
+      properties:
+        levels:
+          type: array
+          maxItems: 6
+          items: { $ref: '#/components/schemas/TerritorialLevel' }
+        usesPostalCode: { type: boolean }
+        postalCodePattern:
+          type: [string, 'null']
+          maxLength: 200
+          description: Obligatorio si usesPostalCode es true.
+      example:
+        levels:
+          - { order: 1, canonicalLabel: ADM1, localLabel: Departamento, canonicalSchemeCode: UBIGEO-INEI, isAddressLevel: false }
+          - { order: 2, canonicalLabel: ADM2, localLabel: Provincia, canonicalSchemeCode: UBIGEO-INEI, isAddressLevel: false }
+          - { order: 3, canonicalLabel: ADM3, localLabel: Distrito, canonicalSchemeCode: UBIGEO-INEI, isAddressLevel: true }
+        usesPostalCode: true
+        postalCodePattern: '^[0-9]{5}$'
+    TerritorialSchema:
+      allOf:
+        - $ref: '#/components/schemas/TerritorialSchemaInput'
+        - type: object
+          required: [countryCode, version]
+          properties:
+            countryCode: { $ref: '#/components/schemas/CountryCode' }
+            version: { $ref: '#/components/schemas/Version' }
+        - $ref: '#/components/schemas/Audit'
+
+    # --- Correspondencias ---
+    Correspondence:
+      allOf:
+        - type: object
+          required: [id, from, to, kind, validFrom, isCurrent, version]
+          properties:
+            id: { type: string, format: uuid }
+            from: { $ref: '#/components/schemas/CodeRef' }
+            to: { $ref: '#/components/schemas/CodeRef' }
+            kind: { $ref: '#/components/schemas/CorrespondenceKind' }
+            validFrom: { type: string, format: date }
+            validTo: { type: [string, 'null'], format: date }
+            isCurrent: { type: boolean }
+            note: { type: [string, 'null'], maxLength: 500 }
+            source: { $ref: '#/components/schemas/SourceRef' }
+            version: { $ref: '#/components/schemas/Version' }
+        - $ref: '#/components/schemas/Audit'
+    CorrespondencePage:
+      allOf:
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Correspondence' }
+        - $ref: '#/components/schemas/PagingFields'
+    RegisterCorrespondenceRequest:
+      type: object
+      required: [from, to, kind, sourceCode]
+      properties:
+        from: { $ref: '#/components/schemas/CodeRef' }
+        to: { $ref: '#/components/schemas/CodeRef' }
+        kind: { $ref: '#/components/schemas/CorrespondenceKind' }
+        validFrom: { type: string, format: date }
+        note: { type: string, maxLength: 500 }
+        sourceCode: { $ref: '#/components/schemas/SourceCode' }
+      example:
+        from: { schemeCode: UBIGEO-INEI, value: '1501' }
+        to: { schemeCode: ISO-3166-2, value: PE-LMA }
+        kind: Equivalent
+        sourceCode: ORG
+
+    # --- Sucesiones ---
+    ParticipantInput:
+      type: object
+      required: [placeId, role]
+      properties:
+        placeId: { type: string, format: uuid }
+        role: { $ref: '#/components/schemas/ParticipantRole' }
+        continues:
+          type: boolean
+          description: Solo en Predecessor; true si el lugar sigue Active tras la sucesión.
+        newParentId:
+          type: [string, 'null']
+          format: uuid
+          description: Solo en Reassignment (Subject).
+        newCode:
+          oneOf:
+            - $ref: '#/components/schemas/CodeRef'
+            - type: 'null'
+          description: Solo en Recoding (Subject).
+        newOfficialName:
+          type: [string, 'null']
+          maxLength: 200
+          description: Solo en Rename (Subject).
+    Participant:
+      allOf:
+        - $ref: '#/components/schemas/ParticipantInput'
+        - type: object
+          required: [place]
+          properties:
+            place: { $ref: '#/components/schemas/PlaceRef' }
+            appliedAt:
+              oneOf:
+                - $ref: '#/components/schemas/Instant'
+                - type: 'null'
+    ProposeSuccessionRequest:
+      type: object
+      required: [type, legalAct, effectiveOn, participants]
+      properties:
+        type: { $ref: '#/components/schemas/SuccessionType' }
+        legalAct: { type: string, minLength: 1, maxLength: 300 }
+        effectiveOn: { type: string, format: date }
+        participants:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: '#/components/schemas/ParticipantInput' }
+        note: { type: string, maxLength: 500 }
+      example:
+        type: Split
+        legalAct: Ley N.° 00000 (ilustrativa)
+        effectiveOn: '2027-01-01'
+        participants:
+          - { placeId: 0d4e2f6a-1b3c-4d5e-8f70-9a1b2c3d4e01, role: Predecessor, continues: true }
+          - { placeId: 0d4e2f6a-1b3c-4d5e-8f70-9a1b2c3d4e02, role: Successor }
+        note: Segregación de un distrito nuevo
+    SuccessionSummary:
+      type: object
+      required: [id, type, status, legalAct, effectiveOn, participantCount, version]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: '#/components/schemas/SuccessionType' }
+        status: { $ref: '#/components/schemas/SuccessionStatus' }
+        legalAct: { type: string, maxLength: 300 }
+        effectiveOn: { type: string, format: date }
+        participantCount: { type: integer, minimum: 1 }
+        appliedParticipantCount: { type: integer, minimum: 0 }
+        affectedAddressCount: { type: [integer, 'null'], minimum: 0 }
+        version: { $ref: '#/components/schemas/Version' }
+    SuccessionPage:
+      allOf:
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/SuccessionSummary' }
+        - $ref: '#/components/schemas/PagingFields'
+    Succession:
+      allOf:
+        - $ref: '#/components/schemas/SuccessionSummary'
+        - type: object
+          required: [participants]
+          properties:
+            note: { type: [string, 'null'], maxLength: 500 }
+            participants:
+              type: array
+              items: { $ref: '#/components/schemas/Participant' }
+            proposedAt: { $ref: '#/components/schemas/Instant' }
+            proposedBy: { $ref: '#/components/schemas/Actor' }
+            decidedAt:
+              oneOf:
+                - $ref: '#/components/schemas/Instant'
+                - type: 'null'
+            decidedBy: { type: [string, 'null'], maxLength: 200 }
+            decisionReason: { type: [string, 'null'], maxLength: 500 }
+            importId: { type: [string, 'null'], format: uuid }
+    AffectedAddress:
+      type: object
+      description: Solo identificadores; nunca calle ni número (ADR-0193).
+      required: [reviewId, ownerType, partyId, currentPlaceId, candidatePlaceIds, reviewStatus]
+      properties:
+        reviewId: { type: string, format: uuid }
+        ownerType: { $ref: '#/components/schemas/AddressOwnerType' }
+        partyId: { type: string, format: uuid }
+        establishmentId: { type: [string, 'null'], format: uuid }
+        currentPlaceId: { type: string, format: uuid }
+        candidatePlaceIds:
+          type: array
+          minItems: 1
+          items: { type: string, format: uuid }
+        reviewStatus: { $ref: '#/components/schemas/AddressReviewStatus' }
+        targetPlaceId: { type: [string, 'null'], format: uuid }
+        resolvedAt:
+          oneOf:
+            - $ref: '#/components/schemas/Instant'
+            - type: 'null'
+        resolvedBy: { type: [string, 'null'], maxLength: 200 }
+        reason: { type: [string, 'null'], maxLength: 500 }
+    AffectedAddressPage:
+      allOf:
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/AffectedAddress' }
+        - $ref: '#/components/schemas/PagingFields'
+    SuccessionApprovalResult:
+      type: object
+      required: [successionId, status, version, affectedAddresses]
+      properties:
+        successionId: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/SuccessionStatus' }
+        version: { $ref: '#/components/schemas/Version' }
+        affectedAddresses:
+          type: object
+          required: [totalCount, items]
+          properties:
+            totalCount: { type: integer, minimum: 0 }
+            items:
+              type: array
+              maxItems: 100
+              items: { $ref: '#/components/schemas/AffectedAddress' }
+            next: { type: [string, 'null'], format: uri-reference }
+      example:
+        successionId: 5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d
+        status: Approved
+        version: 2
+        affectedAddresses:
+          totalCount: 1
+          items:
+            - reviewId: e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b
+              ownerType: Establishment
+              partyId: 0b9c7e0e-2f4a-4c39-9a51-1f0d7a3e9c11
+              establishmentId: 7e2c4a91-3d5b-4f60-8a17-b9c0d2e4f681
+              currentPlaceId: 0d4e2f6a-1b3c-4d5e-8f70-9a1b2c3d4e01
+              candidatePlaceIds: [0d4e2f6a-1b3c-4d5e-8f70-9a1b2c3d4e01, 0d4e2f6a-1b3c-4d5e-8f70-9a1b2c3d4e02]
+              reviewStatus: Pending
+          next: null
+    ResolveAffectedAddressRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision: { $ref: '#/components/schemas/AddressReviewDecision' }
+        targetPlaceId:
+          type: string
+          format: uuid
+          description: Obligatorio con Reassign; debe ser un candidato.
+        reason: { $ref: '#/components/schemas/Reason' }
+
+    # --- Comercio exterior ---
+    TradeLocationSummary:
+      allOf:
+        - $ref: '#/components/schemas/PlaceSummary'
+        - type: object
+          required: [tradeLocation]
+          properties:
+            tradeLocation: { $ref: '#/components/schemas/TradeLocationInfo' }
+    TradeLocationPage:
+      allOf:
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/TradeLocationSummary' }
+        - $ref: '#/components/schemas/PagingFields'
+    TradeLocation:
+      allOf:
+        - $ref: '#/components/schemas/Place'
+        - type: object
+          required: [tradeLocation]
+          properties:
+            tradeLocation: { $ref: '#/components/schemas/TradeLocationInfo' }
+      example:
+        id: 7c1d9e2a-4b3f-4a6e-8d50-2e9f1a6c0c11
+        type: TradeLocation
+        status: Active
+        countryCode: PE
+        level: null
+        officialName: Callao
+        canonicalCode: { schemeCode: UN-LOCODE, value: PECLL }
+        parentId: 3f2b6c1e-0a4d-4e8b-9c71-5d2a8e070101
+        path: PE/07/0701/070101/PECLL
+        displayPath: Callao › Callao › Callao › Callao › Perú
+        tradeLocation:
+          unLocode: PECLL
+          functions: [SEAPORT, ROAD, AIRPORT]
+          uneceStatus: AI
+          uneceStatusDate: '2025-01-01'
+          iataCode: null
+          usableInTradeDocuments: true
+          siteCount: 1
+        version: 1
+    TradeLocationList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/TradeLocationSummary' }
+    RegisterTradeLocationRequest:
+      type: object
+      required: [unLocode, officialName, parentId, functions, uneceStatus, sourceCode]
+      properties:
+        unLocode: { type: string, pattern: '^[A-Z]{2}[A-Z2-9]{3}$' }
+        officialName: { $ref: '#/components/schemas/PlaceName' }
+        nameWithoutDiacritics: { type: string, maxLength: 200 }
+        parentId: { type: string, format: uuid }
+        functions:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/TradeFunction' }
+        uneceStatus: { $ref: '#/components/schemas/UneceStatus' }
+        uneceStatusDate: { type: string, format: date }
+        iataCode: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        geoReference:
+          oneOf:
+            - $ref: '#/components/schemas/GeoReferenceInput'
+            - type: 'null'
+        sourceCode: { $ref: '#/components/schemas/SourceCode' }
+        sourceVersion: { type: string, maxLength: 50 }
+      example:
+        unLocode: PEPAI
+        officialName: Paita
+        nameWithoutDiacritics: Paita
+        parentId: 3f2b6c1e-0a4d-4e8b-9c71-5d2a8e200501
+        functions: [SEAPORT]
+        uneceStatus: AI
+        uneceStatusDate: '2025-01-01'
+        iataCode: null
+        geoReference: { latitude: -5.08, longitude: -81.11, precision: Locality, sourceCode: UNECE }
+        sourceCode: UNECE
+        sourceVersion: UN/LOCODE 2025-1
+    UpdateTradeAttributesRequest:
+      type: object
+      required: [functions, uneceStatus]
+      properties:
+        functions:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/TradeFunction' }
+        uneceStatus: { $ref: '#/components/schemas/UneceStatus' }
+        uneceStatusDate: { type: string, format: date }
+        iataCode: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+    RegisterSiteRequest:
+      type: object
+      required: [siteCode, officialName, siteKind]
+      properties:
+        siteCode:
+          type: string
+          pattern: '^[A-Z]{2}[A-Z2-9]{3}-[A-Z0-9]{1,10}$'
+          description: Empieza por el UN/LOCODE del padre (RN-GEO-09).
+        officialName: { $ref: '#/components/schemas/PlaceName' }
+        siteKind: { $ref: '#/components/schemas/SiteKind' }
+        geoReference:
+          oneOf:
+            - $ref: '#/components/schemas/GeoReferenceInput'
+            - type: 'null'
+      example: { siteCode: PECLL-DT01, officialName: Depósito temporal Organización Callao, siteKind: TemporaryWarehouse, geoReference: null }
+
+    # --- Zonas postales ---
+    PostalZone:
+      allOf:
+        - type: object
+          required: [id, countryCode, code, validFrom, isCurrent, places, version]
+          properties:
+            id: { type: string, format: uuid }
+            countryCode: { $ref: '#/components/schemas/CountryCode' }
+            code: { type: string, minLength: 1, maxLength: 20 }
+            validFrom: { type: string, format: date }
+            validTo: { type: [string, 'null'], format: date }
+            isCurrent: { type: boolean }
+            places:
+              type: array
+              items: { $ref: '#/components/schemas/PlaceRef' }
+            source: { $ref: '#/components/schemas/SourceRef' }
+            license: { $ref: '#/components/schemas/LicenseInfo' }
+            version: { $ref: '#/components/schemas/Version' }
+        - $ref: '#/components/schemas/Audit'
+    PostalZonePage:
+      allOf:
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/PostalZone' }
+        - $ref: '#/components/schemas/PagingFields'
+    RegisterPostalZoneRequest:
+      type: object
+      required: [countryCode, code, placeIds, sourceCode]
+      properties:
+        countryCode: { $ref: '#/components/schemas/CountryCode' }
+        code: { type: string, minLength: 1, maxLength: 20 }
+        placeIds:
+          type: array
+          maxItems: 500
+          uniqueItems: true
+          items: { type: string, format: uuid }
+        validFrom: { type: string, format: date }
+        sourceCode: { $ref: '#/components/schemas/SourceCode' }
+        sourceVersion: { type: string, maxLength: 50 }
+      example: { countryCode: PE, code: '15001', placeIds: [3f2b6c1e-0a4d-4e8b-9c71-5d2a8e150101], sourceCode: SERPOST }
+    ReplacePostalZonePlacesRequest:
+      type: object
+      required: [placeIds]
+      properties:
+        placeIds:
+          type: array
+          maxItems: 500
+          uniqueItems: true
+          items: { type: string, format: uuid }
+
+    # --- Importaciones ---
+    ImportMetadata:
+      type: object
+      required: [sourceCode, sourceVersion, dataCutoffDate, format]
+      properties:
+        sourceCode: { $ref: '#/components/schemas/SourceCode' }
+        sourceVersion: { type: string, minLength: 1, maxLength: 50 }
+        dataCutoffDate: { type: string, format: date }
+        format: { $ref: '#/components/schemas/ImportFormat' }
+        countryCode:
+          oneOf:
+            - $ref: '#/components/schemas/CountryCode'
+            - type: 'null'
+      example: { sourceCode: UNECE, sourceVersion: UN/LOCODE 2025-1, dataCutoffDate: '2025-01-01', format: UNLOCODE_CSV, countryCode: PE }
+    ImportUploadForm:
+      type: object
+      required: [file, metadata]
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          description: Archivo tal cual; máximo propuesto 50 MB.
+        metadata: { $ref: '#/components/schemas/ImportMetadata' }
+    ImportCounts:
+      type: object
+      required: [added, changed, removed, successionProposed, errors, pendingDecisions, applied, failed]
+      properties:
+        added: { type: integer, minimum: 0 }
+        changed: { type: integer, minimum: 0 }
+        removed: { type: integer, minimum: 0 }
+        successionProposed: { type: integer, minimum: 0 }
+        errors: { type: integer, minimum: 0 }
+        pendingDecisions: { type: integer, minimum: 0 }
+        applied: { type: integer, minimum: 0 }
+        failed: { type: integer, minimum: 0 }
+    ImportBatch:
+      type: object
+      required: [id, sourceCode, sourceVersion, dataCutoffDate, format, fileName, fileSha256, fileSizeBytes, status, counts, uploadedAt, uploadedBy, version]
+      properties:
+        id: { type: string, format: uuid }
+        sourceCode: { $ref: '#/components/schemas/SourceCode' }
+        sourceVersion: { type: string, maxLength: 50 }
+        dataCutoffDate: { type: string, format: date }
+        format: { $ref: '#/components/schemas/ImportFormat' }
+        countryCode:
+          oneOf:
+            - $ref: '#/components/schemas/CountryCode'
+            - type: 'null'
+        fileName: { type: string, maxLength: 260 }
+        fileSha256: { $ref: '#/components/schemas/Sha256' }
+        fileSizeBytes: { type: integer, format: int64, minimum: 1 }
+        status: { $ref: '#/components/schemas/ImportStatus' }
+        counts: { $ref: '#/components/schemas/ImportCounts' }
+        uploadedAt: { $ref: '#/components/schemas/Instant' }
+        uploadedBy: { $ref: '#/components/schemas/Actor' }
+        decidedAt:
+          oneOf:
+            - $ref: '#/components/schemas/Instant'
+            - type: 'null'
+        decidedBy: { type: [string, 'null'], maxLength: 200 }
+        decisionReason: { type: [string, 'null'], maxLength: 500 }
+        version: { $ref: '#/components/schemas/Version' }
+    ImportBatchPage:
+      allOf:
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/ImportBatch' }
+        - $ref: '#/components/schemas/PagingFields'
+    ImportAccepted:
+      type: object
+      required: [id, status, version]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/ImportStatus' }
+        version: { $ref: '#/components/schemas/Version' }
+      example: { id: 9b8a7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d, status: Received, version: 1 }
+    ImportDiff:
+      type: object
+      required: [id, lineNumber, kind, requiresDecision, applyStatus]
+      properties:
+        id: { type: string, format: uuid }
+        lineNumber: { type: integer, minimum: 1 }
+        kind: { $ref: '#/components/schemas/DiffKind' }
+        targetPlaceId: { type: [string, 'null'], format: uuid }
+        schemeCode:
+          oneOf:
+            - $ref: '#/components/schemas/SchemeCode'
+            - type: 'null'
+        codeValue: { type: [string, 'null'], maxLength: 35 }
+        before:
+          type: [object, 'null']
+          description: Campos que cambian, con su valor actual.
+          additionalProperties: true
+        after:
+          type: [object, 'null']
+          description: Campos que cambian, con el valor del archivo.
+          additionalProperties: true
+        requiresDecision: { type: boolean }
+        decision:
+          oneOf:
+            - $ref: '#/components/schemas/DiffDecision'
+            - type: 'null'
+        decidedBy: { type: [string, 'null'], maxLength: 200 }
+        applyStatus: { $ref: '#/components/schemas/DiffApplyStatus' }
+        applyError: { type: [string, 'null'], maxLength: 500 }
+    ImportDiffPage:
+      allOf:
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/ImportDiff' }
+        - $ref: '#/components/schemas/PagingFields'
+    DiffDecisionsRequest:
+      type: object
+      required: [decisions]
+      properties:
+        decisions:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: object
+            required: [diffId, decision]
+            properties:
+              diffId: { type: string, format: uuid }
+              decision: { $ref: '#/components/schemas/DiffDecision' }
+
+    # --- Catálogos ---
+    CodeSchemeInput:
+      type: object
+      required: [name, authority, appliesTo, valuePattern, maxLength, prefixRule, isCanonical, defaultSourceCode]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        authority: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: [string, 'null'], maxLength: 500 }
+        countryCode:
+          oneOf:
+            - $ref: '#/components/schemas/CountryCode'
+            - type: 'null'
+        appliesTo:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/PlaceType' }
+        valuePattern: { type: string, minLength: 1, maxLength: 200 }
+        maxLength: { type: integer, minimum: 1, maximum: 35 }
+        prefixRule: { $ref: '#/components/schemas/PrefixRule' }
+        isCanonical: { type: boolean }
+        defaultSourceCode: { $ref: '#/components/schemas/SourceCode' }
+    RegisterCodeSchemeRequest:
+      allOf:
+        - type: object
+          required: [code]
+          properties:
+            code: { $ref: '#/components/schemas/SchemeCode' }
+        - $ref: '#/components/schemas/CodeSchemeInput'
+    CodeScheme:
+      allOf:
+        - $ref: '#/components/schemas/RegisterCodeSchemeRequest'
+        - type: object
+          required: [isActive, codeCount, version]
+          properties:
+            isActive: { type: boolean }
+            codeCount: { type: integer, format: int64, minimum: 0 }
+            version: { $ref: '#/components/schemas/Version' }
+        - $ref: '#/components/schemas/Audit'
+    CodeSchemeList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CodeScheme' }
+      example:
+        items:
+          - code: UBIGEO-INEI
+            name: Ubigeo del INEI
+            authority: INEI
+            description: Ubigeo canónico del Perú (D-048)
+            countryCode: PE
+            appliesTo: [AdministrativeDivision]
+            valuePattern: '^[0-9]{2}([0-9]{2}){0,2}$'
+            maxLength: 6
+            prefixRule: ParentValue
+            isCanonical: true
+            defaultSourceCode: INEI
+            isActive: true
+            codeCount: 2112
+            version: 1
+    RegisterSourceRequest:
+      type: object
+      required: [code, authority, licenseName]
+      properties:
+        code: { $ref: '#/components/schemas/SourceCode' }
+        authority: { type: string, minLength: 1, maxLength: 100 }
+        licenseName: { type: string, minLength: 1, maxLength: 200 }
+        licenseUrl: { type: [string, 'null'], format: uri, maxLength: 400 }
+        attributionText: { type: [string, 'null'], maxLength: 500 }
+    UpdateLicenseRequest:
+      type: object
+      required: [licenseName, redistribution]
+      properties:
+        licenseName: { type: string, minLength: 1, maxLength: 200 }
+        licenseUrl: { type: [string, 'null'], format: uri, maxLength: 400 }
+        redistribution: { $ref: '#/components/schemas/Redistribution' }
+        attributionText: { type: [string, 'null'], maxLength: 500 }
+        confirmedOn:
+          type: [string, 'null']
+          format: date
+          description: Obligatorio para pasar a redistribuible (geo.source.evidence_required).
+        evidenceRef:
+          type: [string, 'null']
+          maxLength: 400
+    Source:
+      allOf:
+        - $ref: '#/components/schemas/RegisterSourceRequest'
+        - type: object
+          required: [redistribution, version]
+          properties:
+            redistribution: { $ref: '#/components/schemas/Redistribution' }
+            confirmedOn: { type: [string, 'null'], format: date }
+            evidenceRef: { type: [string, 'null'], maxLength: 400 }
+            version: { $ref: '#/components/schemas/Version' }
+        - $ref: '#/components/schemas/Audit'
+    SourceList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Source' }
+      example:
+        items:
+          - code: UNECE
+            authority: UNECE (UN/CEFACT)
+            licenseName: Términos de UNECE, contradictorios (G-616)
+            licenseUrl: https://unlocode.unece.org/terms
+            attributionText: null
+            redistribution: InternalOnly
+            confirmedOn: null
+            evidenceRef: null
+            version: 1

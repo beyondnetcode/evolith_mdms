@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/montserrat/wght.css';
+@import '../../../libs/ui-tokens/src/theme.css';
+
+/* Tailwind no ve las librerías del workspace por sí solo: se declaran como fuente de clases. */
+@source '../../../libs';

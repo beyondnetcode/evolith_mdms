@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "paths": {
+      "@mdm/app": ["./libs/mdm-app/src/index.ts"],
+      "@mdm/app/testing": ["./libs/mdm-app/src/testing/index.ts"],
+      "@mdm/contracts": ["./libs/mdm-contracts/src/index.ts"],
+      "@mdm/mock": ["./libs/mdm-mock/src/index.ts"],
+      "@sil/ui": ["./libs/ui-sil/src/index.ts"],
+      "@sil/ui/testing": ["./libs/ui-sil/src/testing/index.ts"],
+      "@sil/ui-tokens": ["./libs/ui-tokens/src/index.ts"],
+      "@suite/contracts": ["./libs/suite-contracts/src/index.ts"],
+      "@suite/header": ["./libs/suite-header/src/index.ts"],
+      "@suite/mock": ["./libs/suite-mock/src/index.ts"],
+      "@suite/shell": ["./libs/suite-shell/src/index.ts"]
+    }
+  }
+}

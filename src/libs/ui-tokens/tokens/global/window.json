@@ -1,0 +1,21 @@
+{
+  "md": {
+    "ref": {
+      "window": {
+        "$description": "Clases de tamaño de ventana de M3 (UX-SIL-001 §7.2); `compact` es el valor sin prefijo. Deben coincidir con WINDOW_SIZE_CLASSES de index.ts: lo comprueba una prueba.",
+        "medium": {
+          "$value": "37.5rem"
+        },
+        "expanded": {
+          "$value": "52.5rem"
+        },
+        "large": {
+          "$value": "75rem"
+        },
+        "extra-large": {
+          "$value": "100rem"
+        }
+      }
+    }
+  }
+}

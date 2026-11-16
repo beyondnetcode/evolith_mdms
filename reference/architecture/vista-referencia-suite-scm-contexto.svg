@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1550" width="2000" height="1550" font-family="Helvetica, Arial, sans-serif">
+  <title>Vista de referencia: contexto de la suite SCM</title>
+  <desc>Sistemas transversales (UMS, CMS, MDM, NMS) sobre la suite SCM; SIL publica la orden de servicio a topics por sistema ejecutor (DT, TMS, WMS, CNS); DT, TMS y WMS convergen en un topic con BILLING; la suite y los sistemas transversales salen a XMS; abajo, el flujo actual SAP, middleware SUNAT y SAP. Transcripción vectorial de la imagen de referencia entregada por el propietario el 2026-10-24.</desc>
+  <defs>
+    <marker id="flecha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 L3,5 z" fill="#000"/>
+    </marker>
+    <linearGradient id="gris" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f5f5f5"/>
+      <stop offset="1" stop-color="#b3b3b3"/>
+    </linearGradient>
+  </defs>
+  <rect width="2000" height="1550" fill="#ffffff"/>
+
+  <!-- Sistemas transversales -->
+  <g font-size="21" text-anchor="middle">
+    <rect x="378" y="70" width="226" height="113" rx="16" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2"/>
+    <text x="491" y="107" font-weight="bold">Sistema</text>
+    <text x="491" y="134" font-weight="bold">Usuarios</text>
+    <text x="491" y="161">(UMS)</text>
+
+    <rect x="850" y="70" width="226" height="113" rx="16" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2"/>
+    <text x="963" y="107" font-weight="bold">Sistema</text>
+    <text x="963" y="134" font-weight="bold">Comercial</text>
+    <text x="963" y="161">(CMS)</text>
+
+    <rect x="1322" y="70" width="226" height="113" rx="16" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2"/>
+    <text x="1435" y="107" font-weight="bold">Sistema Data</text>
+    <text x="1435" y="134" font-weight="bold">Maestra</text>
+    <text x="1435" y="161">(MDM)</text>
+
+    <rect x="1582" y="70" width="226" height="113" rx="16" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2"/>
+    <text x="1695" y="107" font-weight="bold">Sistema</text>
+    <text x="1695" y="134" font-weight="bold">Notificaciones</text>
+    <text x="1695" y="161">(NMS)</text>
+  </g>
+
+  <g stroke="#000" stroke-width="2" fill="none">
+    <path d="M491,183 V275" marker-end="url(#flecha)"/>
+    <path d="M963,183 V275" marker-end="url(#flecha)"/>
+    <path d="M1435,183 V275" marker-end="url(#flecha)"/>
+    <path d="M1695,183 V275" marker-end="url(#flecha)"/>
+  </g>
+  <g font-size="19" text-anchor="middle">
+    <rect x="360" y="215" width="262" height="26" fill="#ffffff"/>
+    <text x="491" y="237">Autenticación / Autorización</text>
+    <rect x="860" y="207" width="206" height="26" fill="#ffffff"/>
+    <text x="963" y="229">acuerdos comerciales</text>
+    <rect x="1390" y="207" width="132" height="26" fill="#ffffff"/>
+    <text x="1455" y="229">Data Maestra</text>
+    <rect x="1604" y="216" width="186" height="26" fill="#ffffff"/>
+    <text x="1697" y="238">Notificaciones push</text>
+  </g>
+
+  <!-- Contenedor de la suite -->
+  <rect x="20" y="278" width="1887" height="908" fill="#ffffff" stroke="#000" stroke-width="2"/>
+  <rect x="76" y="367" width="1113" height="765" fill="#f9f6ee" stroke="#000" stroke-width="2" stroke-dasharray="12 8"/>
+  <text x="99" y="358" font-size="21">SUITE SCM</text>
+
+  <!-- Sistemas de la suite -->
+  <g font-size="21" text-anchor="middle">
+    <rect x="115" y="628" width="226" height="112" rx="12" fill="#ffff88" stroke="#333" stroke-width="2"/>
+    <text x="228" y="691">SIL</text>
+    <rect x="888" y="448" width="226" height="112" rx="12" fill="#ffff88" stroke="#333" stroke-width="2"/>
+    <text x="1001" y="511">DT</text>
+    <rect x="888" y="628" width="226" height="112" rx="12" fill="#eeeeee" stroke="#333" stroke-width="2" stroke-dasharray="6 5"/>
+    <text x="1001" y="691">TMS</text>
+    <rect x="888" y="807" width="226" height="112" rx="12" fill="#eeeeee" stroke="#333" stroke-width="2" stroke-dasharray="6 5"/>
+    <text x="1001" y="870">WMS</text>
+    <rect x="888" y="976" width="226" height="112" rx="12" fill="#ffff88" stroke="#333" stroke-width="2"/>
+    <text x="1001" y="1039">CNS</text>
+    <rect x="1605" y="795" width="226" height="112" rx="12" fill="#f8cecc" stroke="#333" stroke-width="2"/>
+    <text x="1718" y="858">BILLING</text>
+  </g>
+
+  <!-- Flujos de la orden de servicio -->
+  <g stroke="#000" stroke-width="2" fill="none">
+    <path d="M228,628 V505 H564" marker-end="url(#flecha)"/>
+    <path d="M341,684 H564" marker-end="url(#flecha)"/>
+    <path d="M228,740 V1033 H564" marker-end="url(#flecha)"/>
+    <path d="M228,863 H564" marker-end="url(#flecha)"/>
+    <path d="M888,505 H656" marker-end="url(#flecha)"/>
+    <path d="M888,684 H656" marker-end="url(#flecha)"/>
+    <path d="M888,863 H656" marker-end="url(#flecha)"/>
+    <path d="M888,1033 H656" marker-end="url(#flecha)"/>
+    <path d="M1114,505 H1327 V638" marker-end="url(#flecha)"/>
+    <path d="M1114,684 H1281" marker-end="url(#flecha)"/>
+    <path d="M1114,863 H1327 V730" marker-end="url(#flecha)"/>
+    <path d="M1718,795 V684 H1373" marker-end="url(#flecha)"/>
+  </g>
+  <g font-size="19" text-anchor="middle">
+    <text x="418" y="485">orden de servicio</text>
+    <text x="437" y="702">orden de servicio</text>
+    <rect x="358" y="852" width="158" height="24" fill="#f9f6ee"/>
+    <text x="437" y="871">orden de servicio</text>
+  </g>
+
+  <!-- Topics -->
+  <g fill="#0050ef" stroke="#001dbc" stroke-width="2">
+    <circle cx="610" cy="505" r="43"/>
+    <circle cx="610" cy="684" r="43"/>
+    <circle cx="610" cy="863" r="43"/>
+    <circle cx="610" cy="1033" r="43"/>
+    <circle cx="1327" cy="684" r="43"/>
+  </g>
+  <g font-size="21" fill="#ffffff" text-anchor="middle">
+    <text x="610" y="512">topic</text>
+    <text x="610" y="691">topic</text>
+    <text x="610" y="870">topic</text>
+    <text x="610" y="1040">topic</text>
+    <text x="1327" y="691">topic</text>
+  </g>
+
+  <!-- Salida a XMS -->
+  <g stroke="#000" stroke-width="2" fill="none">
+    <path d="M963,1186 V1255" marker-end="url(#flecha)"/>
+    <path d="M1435,70 V33 H1963 V1316 H1901" marker-end="url(#flecha)"/>
+    <path d="M1808,127 H1963"/>
+  </g>
+  <rect x="30" y="1259" width="1867" height="112" rx="16" fill="#fad7ac" stroke="#b46504" stroke-width="2"/>
+  <text x="963" y="1322" font-size="21" text-anchor="middle">XMS</text>
+
+  <!-- Estado actual con SAP -->
+  <g font-size="21" text-anchor="middle">
+    <rect x="473" y="1410" width="226" height="113" rx="12" fill="#0050ef" stroke="#001dbc" stroke-width="2"/>
+    <text x="586" y="1473" fill="#ffffff">SAP</text>
+    <rect x="850" y="1410" width="226" height="113" rx="12" fill="url(#gris)" stroke="#666" stroke-width="2"/>
+    <text x="963" y="1446">Middleware</text>
+    <text x="963" y="1473">SUNAT</text>
+    <text x="963" y="1500">(current)</text>
+    <rect x="1227" y="1410" width="226" height="113" rx="12" fill="#0050ef" stroke="#001dbc" stroke-width="2"/>
+    <text x="1340" y="1473" fill="#ffffff">SAP</text>
+  </g>
+  <g stroke="#000" stroke-width="2" fill="none">
+    <path d="M850,1466 H702" marker-end="url(#flecha)"/>
+    <path d="M1227,1466 H1079" marker-end="url(#flecha)"/>
+  </g>
+</svg>

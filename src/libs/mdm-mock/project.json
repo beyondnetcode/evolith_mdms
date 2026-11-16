@@ -1,0 +1,21 @@
+{
+  "name": "mdm-mock",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "libs/mdm-mock/src",
+  "tags": ["scope:mdm", "type:mock"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": { "command": "tsc -p libs/mdm-mock/tsconfig.json", "cwd": "{workspaceRoot}" }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "eslint libs/mdm-mock", "cwd": "{workspaceRoot}" }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "vitest run libs/mdm-mock", "cwd": "{workspaceRoot}" }
+    }
+  }
+}

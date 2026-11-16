@@ -1,0 +1,46 @@
+{
+  "md": {
+    "sys": {
+      "motion": {
+        "easing": {
+          "standard": {
+            "$value": "{md.ref.motion.easing.standard}"
+          },
+          "standard-decelerate": {
+            "$value": "{md.ref.motion.easing.standard-decelerate}"
+          },
+          "standard-accelerate": {
+            "$value": "{md.ref.motion.easing.standard-accelerate}"
+          },
+          "emphasized": {
+            "$value": "{md.ref.motion.easing.emphasized}"
+          },
+          "emphasized-decelerate": {
+            "$value": "{md.ref.motion.easing.emphasized-decelerate}"
+          },
+          "emphasized-accelerate": {
+            "$value": "{md.ref.motion.easing.emphasized-accelerate}"
+          }
+        },
+        "duration": {
+          "$description": "Duraciones como variables, no como literales (UI-SIL-001 §3.8, UI-10): se consumen con `duration-(--md-sys-motion-duration-short4)` o con var().",
+          "short3": {
+            "$value": "{md.ref.motion.duration.short3}"
+          },
+          "short4": {
+            "$value": "{md.ref.motion.duration.short4}"
+          },
+          "medium1": {
+            "$value": "{md.ref.motion.duration.medium1}"
+          },
+          "medium2": {
+            "$value": "{md.ref.motion.duration.medium2}"
+          },
+          "reduced": {
+            "$value": "{md.ref.motion.duration.reduced}"
+          }
+        }
+      }
+    }
+  }
+}

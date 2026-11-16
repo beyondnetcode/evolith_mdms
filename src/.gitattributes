@@ -1,0 +1,18 @@
+# Integridad de persistencia del código fuente (misma convención que organizacion-ums).
+* text=auto eol=lf
+
+*.md text eol=lf working-tree-encoding=UTF-8
+*.txt text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# El código fuente se diffea SIEMPRE como texto: sin el atributo `diff`, git declara
+# binario cualquier fichero con un byte NUL en sus primeros 8 KB y oculta su cambio.
+*.ts   text diff
+*.tsx  text diff
+*.cs   text diff
+
+*.png binary
+*.jpg binary
+*.svg text

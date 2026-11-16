@@ -1,0 +1,11 @@
+{
+  "md": {
+    "sys": {
+      "typeface": {
+        "plain": {
+          "$value": "{md.ref.typeface.brand}"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "md": {
+    "comp": {
+      "touch-target": {
+        "$description": "Objetivo táctil de 48 dp (ADR-0110 §2.3, WCAG 2.5.8).",
+        "size": {
+          "$value": "3rem"
+        }
+      },
+      "focus-ring": {
+        "width": {
+          "$value": "0.1875rem"
+        },
+        "offset": {
+          "$value": "0.125rem"
+        },
+        "$description": "El color del anillo es `md.sys.color.secondary` (cambia con el esquema): se toma con var() en el estilo base, no se congela aquí."
+      },
+      "focus-scroll-margin": {
+        "$description": "Holgura para que el contenido fijo no tape el foco (WCAG 2.4.11, ADR-0110 §2.8): arriba caben dos barras apiladas; abajo, la barra de acciones o la de navegación con su FAB.",
+        "start": {
+          "$value": "8rem"
+        },
+        "end": {
+          "$value": "7rem"
+        }
+      },
+      "dialog": {
+        "width": {
+          "$value": "min(100vw - 3rem, 35rem)"
+        }
+      },
+      "side-sheet": {
+        "width": {
+          "$value": "min(100vw - 3rem, 25rem)"
+        }
+      },
+      "navigation-rail-modal": {
+        "width": {
+          "$value": "min(100vw - 3rem, 22.5rem)"
+        }
+      },
+      "progress-indicator": {
+        "indeterminate-duration": {
+          "$value": "{md.ref.motion.duration.extra-long2}"
+        }
+      },
+      "data-table": {
+        "$description": "Tabla de datos (UI-SIL-001 §3.1 y §3.11): cómoda por defecto; la densidad compacta la aplica theme.css bajo `data-density='compact'`.",
+        "row-two-lines-height": {
+          "$value": "3.5rem"
+        },
+        "row-one-line-height": {
+          "$value": "3rem"
+        },
+        "header-height": {
+          "$value": "3rem"
+        },
+        "compact": {
+          "row-two-lines-height": {
+            "$value": "2.75rem"
+          },
+          "row-one-line-height": {
+            "$value": "2.5rem"
+          },
+          "header-height": {
+            "$value": "2.5rem"
+          }
+        }
+      },
+      "list-detail": {
+        "$description": "Lista-detalle de la bandeja desde `large` (R-17, EX-02): tabla de al menos 672 dp y vista previa de 360 dp.",
+        "list-min-width": {
+          "$value": "42rem"
+        },
+        "detail-width": {
+          "$value": "22.5rem"
+        }
+      },
+      "form-index": {
+        "$description": "Cabecera de formulario de dos columnas: índice de secciones y contenido (P-02).",
+        "index-width": {
+          "$value": "15rem"
+        }
+      }
+    }
+  }
+}

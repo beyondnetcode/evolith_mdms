@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Unimar.Shells.Net.Ddd" />
+    <PackageReference Include="Unimar.Shells.Net.Ddd.ValueObjects" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Mdm.Domain.Test" />
+  </ItemGroup>
+
+</Project>

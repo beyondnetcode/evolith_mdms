@@ -1,0 +1,58 @@
+<Project>
+  <!--
+    Central Package Management de todos los proyectos .NET de src/ (ADR-0066 §3.1).
+    Cada versión se fija aquí, exacta; los .csproj declaran el paquete sin versión.
+    Cada proyecto restaura con packages.lock.json (Directory.Build.props).
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="Análisis estático (D-005)">
+    <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.29.0.143774" />
+  </ItemGroup>
+
+  <ItemGroup Label="Dominio (D-008)">
+    <!-- Shells corporativos: bases DDD (AggregateRoot, Entity, ValueObject, DomainEnumeration). Feed `organizacion` (src/NuGet.Config). -->
+    <PackageVersion Include="Unimar.Shells.Net.Ddd" Version="1.0.0" />
+    <PackageVersion Include="Unimar.Shells.Net.Ddd.ValueObjects" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Aplicación (CQRS y validación, ADR-0041)">
+    <!-- MediatR 12.4.1 es la última versión Apache 2.0; la 13+ pasó a licencia comercial. -->
+    <PackageVersion Include="MediatR" Version="12.4.1" />
+    <PackageVersion Include="FluentValidation" Version="12.0.0" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Dobles de prueba">
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    <!-- Contenedor real solo para la prueba de AddApplication; la aplicación depende solo de las abstracciones. -->
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup Label="Autenticación (ADR-0157, ADR-0230)">
+    <!-- Verificación local del portador RS256 contra el JWKS de UMS. -->
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup Label="Persistencia (D-008, ADR-0229)">
+    <!-- EF Core sobre SQL Server; mismas versiones que organizacion-ums. Design solo lo referencia el proyecto de migraciones. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7" />
+    <!-- Transitivo de Microsoft.Data.SqlClient (EF SqlServer 10.0.7) con 9.0.4, que tiene
+         GHSA-846f-f764-76mx (alta) y GHSA-2fmv-rv2c-59x7 (moderada); ambas se corrigen en 10.0.13
+         (medido con gh api /advisories). Se fija con CentralPackageTransitivePinning y se retira
+         cuando SqlClient traiga una versión corregida. -->
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup Label="Pruebas (D-004)">
+    <!-- FluentAssertions 8.x cambió a licencia comercial de Xceed; 7.2.2 es la última Apache 2.0 (G-259). -->
+    <PackageVersion Include="FluentAssertions" Version="7.2.2" />
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
+    <PackageVersion Include="Testcontainers.MsSql" Version="4.15.0" />
+  </ItemGroup>
+</Project>

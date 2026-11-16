@@ -1,0 +1,14 @@
+/*
+ * Se retiran la paleta, las formas, las sombras, las fuentes, la escala de texto, los puntos de corte y las
+ * curvas por defecto de Tailwind: solo existen las de M3 (ADR-0110 §2.2). Va ANTES de los tokens generados:
+ * un reinicio posterior los borraría.
+ */
+@theme {
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --font-*: initial;
+  --text-*: initial;
+  --breakpoint-*: initial;
+  --ease-*: initial;
+}

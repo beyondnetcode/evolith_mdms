@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <!-- xUnit1051 pide pasar TestContext.Current.CancellationToken a cada llamada asíncrona. Estas pruebas
+         corren contra un contenedor efímero que se destruye al terminar la colección: cancelar a mitad de
+         una consulta no deja nada que limpiar, y el ruido de pasar el token en ~80 llamadas no lo compensa. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Testcontainers.MsSql" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Mdm.Infrastructure/Mdm.Infrastructure.csproj" />
+    <!-- Las migraciones se aplican a un contenedor vacío, como lo hace quien despliega. -->
+    <ProjectReference Include="../Mdm.Infrastructure.Migrations.SqlServer/Mdm.Infrastructure.Migrations.SqlServer.csproj" />
+  </ItemGroup>
+
+</Project>

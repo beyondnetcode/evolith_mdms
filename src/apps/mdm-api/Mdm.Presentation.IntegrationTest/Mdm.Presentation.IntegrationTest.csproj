@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers.MsSql" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Mdm.Presentation/Mdm.Presentation.csproj" />
+    <!-- Las migraciones se aplican a un contenedor vacío con MdmDatabaseMigrator, como lo hace quien despliega. -->
+    <ProjectReference Include="../Mdm.Infrastructure.Migrations.SqlServer/Mdm.Infrastructure.Migrations.SqlServer.csproj" />
+  </ItemGroup>
+
+</Project>

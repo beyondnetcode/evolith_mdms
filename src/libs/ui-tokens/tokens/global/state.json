@@ -1,0 +1,27 @@
+{
+  "md": {
+    "ref": {
+      "state": {
+        "$description": "Capas de estado de M3 (ADR-0110 §2.7, UI-SIL-001 §3.9): 8 % al pasar el cursor, 10 % con foco y al pulsar, 16 % al arrastrar; el deshabilitado pinta `on-surface` al 12 % (contenedor) y al 38 % (contenido).",
+        "hover": {
+          "$value": "0.08"
+        },
+        "focus": {
+          "$value": "0.1"
+        },
+        "pressed": {
+          "$value": "0.1"
+        },
+        "dragged": {
+          "$value": "0.16"
+        },
+        "disabled-container": {
+          "$value": "0.12"
+        },
+        "disabled-content": {
+          "$value": "0.38"
+        }
+      }
+    }
+  }
+}

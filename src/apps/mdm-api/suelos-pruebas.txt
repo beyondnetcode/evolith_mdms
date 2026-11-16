@@ -1,0 +1,13 @@
+# Suelo de pruebas por proyecto (verify-local.sh tests-dotnet): <proyecto> <mínimo de pruebas ejecutadas>.
+# Se revisa AL ALZA con el recuento medido; a la baja, solo con ficha en GAPS.md.
+#
+# Los proyectos con contenedor (Infrastructure.IntegrationTest y las suites EndToEnd de
+# Presentation.IntegrationTest) necesitan Docker. Sin Docker se SALTAN con el motivo, y
+# `--minimum-expected-tests` cuenta las saltadas dentro del total (medido con MTP 2026-10: total = ejecutadas + saltadas).
+# Por eso su suelo es el TOTAL descubierto, no las que corren sin Docker: detecta pruebas borradas en ambos
+# entornos. Con Docker deben pasar todas; sin él, la puerta verifica compilación y descubrimiento, no la lógica.
+Mdm.Domain.Test 62
+Mdm.Application.Test 159
+Mdm.Infrastructure.Test 21
+Mdm.Infrastructure.IntegrationTest 21
+Mdm.Presentation.IntegrationTest 112

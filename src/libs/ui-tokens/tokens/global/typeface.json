@@ -1,0 +1,18 @@
+{
+  "md": {
+    "ref": {
+      "typeface": {
+        "$description": "Familias y pesos crudos. Montserrat se autoaloja con @fontsource (ADR-0109 §2.10; ADR-0165 §2.8: nada de CDN).",
+        "brand": {
+          "$value": "'Montserrat Variable', ui-sans-serif, system-ui, sans-serif"
+        },
+        "weight-regular": {
+          "$value": "400"
+        },
+        "weight-medium": {
+          "$value": "500"
+        }
+      }
+    }
+  }
+}
